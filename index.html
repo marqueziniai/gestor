@@ -811,6 +811,9 @@ mark{background:color-mix(in srgb,var(--caution) 32%,transparent);color:inherit;
 .bv-card .field:last-of-type{margin-bottom:14px}
 .bv-sem{align-self:center;font-size:15px;font-weight:550;color:var(--accent);padding:10px 14px;border-radius:var(--r-md)}
 .bv-sem:hover{background:var(--accent-soft)}
+.esqueci{display:block;margin:10px auto 0;font-size:13.5px;font-weight:550;color:var(--accent);padding:8px 12px;border-radius:var(--r-md)}
+.esqueci:hover{background:var(--accent-soft)}
+.esqueci:disabled{opacity:.6}
 .bv-nota{font-size:12.5px;line-height:1.5;color:var(--text-3);text-align:center}
 </style>
 </head>
@@ -5429,6 +5432,8 @@ const nuvem = {
   pronto:false,       // só conta mudanças feitas depois da inicialização
   aplicando:false,    // gravação vinda da nuvem não marca pendência
   rodando:false, denovo:false, timer:null, alteracoes:0,
+  pausada:false,      // criando a senha nova após o link do e-mail: a pergunta de conflito espera
+  retorno:null,       // tokens ou erro trazidos pelo link de recuperação de senha
   st:'', erro:''      // '' | 'sync' | 'ok' | 'offline' | 'erro' | 'conflito' | 'versao' | 'expirou'
 };
 function lerJSONLS(k){ try{ return JSON.parse(lerLS(k) || 'null'); }catch(e){ return null; } }
@@ -5522,11 +5527,16 @@ async function nuvemRest(metodo, caminho, corpo, prefer){
 /** aoAutenticar: roda com a senha aceita, antes da primeira sincronização (que pode abrir a pergunta de conflito). */
 async function nuvemEntrar(email, senha, aoAutenticar){
   const j = await nuvemFetch('/auth/v1/token?grant_type=password', {method:'POST', headers:{apikey:NUVEM_CHAVE, 'Content-Type':'application/json'}, body:JSON.stringify({email, password:senha})});
+  return nuvemAbrirSessao(j, aoAutenticar);
+}
+/** Sessão nova (senha ou link de recuperação): troca de conta zera a base e sincroniza. */
+function nuvemAbrirSessao(j, aoAutenticar, semSincronizar){
   const s = nuvemGuardarSessao(j);
   const m = nuvemMeta();
   if(m.uid !== s.uid){ m.uid = s.uid; m.base = null; m.ultimaSync = null; nuvemSalvarMeta(m); }   // outra conta: começa do zero
   nuvem.st = ''; nuvem.erro = '';
   if(aoAutenticar) aoAutenticar();
+  if(semSincronizar) return Promise.resolve();
   return nuvemSincronizar({primeira:true});
 }
 /** apagar: limpa os dados e as preferências deste aparelho (a cópia da conta continua na nuvem). */
@@ -5555,7 +5565,7 @@ function nuvemSair(apagar){
 /** op.perguntar=false (checagem periódica): conflito não abre pergunta, só avisa na caixa. */
 async function nuvemSincronizar(op){
   op = op || {};
-  if(!nuvemSessao()) return;
+  if(!nuvemSessao() || nuvem.pausada) return;
   if(nuvem.rodando){ nuvem.denovo = true; return; }
   clearTimeout(nuvem.timer);
   nuvem.rodando = true; nuvemStatus('sync');
@@ -5687,13 +5697,15 @@ function nuvemHTML(){
       '<p style="font-size:14px;color:var(--text-2);margin-bottom:10px">Entre para guardar suas tarefas na nuvem e ver os mesmos dados no celular e no computador. Sem entrar, tudo continua só neste aparelho.</p>' +
       '<div class="field"><label for="nuvemEmail">E-mail</label><input class="inp" id="nuvemEmail" type="email" name="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false"></div>' +
       '<div class="field"><label for="nuvemSenha">Senha</label><input class="inp" id="nuvemSenha" type="password" name="password" autocomplete="current-password"></div>' +
-      '<button type="submit" class="btn prim" id="nuvemEntrarBtn">' + ic('cloud',15) + 'Entrar</button>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center"><button type="submit" class="btn prim" id="nuvemEntrarBtn">' + ic('cloud',15) + 'Entrar</button>' +
+      '<button type="button" class="esqueci" style="margin:0" data-esqueci>Esqueci a senha</button></div>' +
       (nuvem.st === 'expirou' ? '<p class="hint">' + ic('alert',13) + '<span>A sessão expirou. Entre de novo.</span></p>' : '') +
     '</form>';
   return '<div class="row-between" style="gap:8px;flex-wrap:wrap"><span style="font-size:14px">Conectado como <b>' + esc(s.email || '') + '</b></span></div>' +
     '<p class="hint" id="nuvemStatus" role="status">' + nuvemStatusHTML() + '</p>' +
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' +
       '<button type="button" class="btn" data-act="nuvem-sync">' + ic('refresh',15) + 'Sincronizar agora</button>' +
+      '<button type="button" class="btn" data-act="nuvem-senha">Alterar senha</button>' +
       '<button type="button" class="btn" data-act="nuvem-sair">' + ic('logout',15) + 'Sair</button></div>' +
     '<p class="hint">' + ic('info',13) + '<span>Projetos, tarefas, lembretes, estrutura, categorias, lixeira e preferências (tema, filtros e visões) ficam salvos na sua conta. Larguras de colunas e o menu lateral ficam em cada aparelho.</span></p>';
 }
@@ -5710,7 +5722,8 @@ Object.assign(ACOES, {
         : 'Tudo já está salvo na sua conta. Apagar os dados deste aparelho é o mais seguro num aparelho compartilhado.',
       opcoes}).then(r => { if(r) nuvemSair(r === 'apagar'); });
   },
-  'nuvem-entrar': () => { fecharSheet(true); mostrarBoasVindas(); }
+  'nuvem-entrar': () => { fecharSheet(true); mostrarBoasVindas(); },
+  'nuvem-senha': () => abrirNovaSenha(false)
 });
 /** Formulários de login (Configurações e boas-vindas) têm data-nuvem-login. */
 document.addEventListener('submit', function(e){
@@ -5728,6 +5741,113 @@ document.addEventListener('submit', function(e){
     toast(err.message === 'offline' ? 'Sem conexão com a internet' : err.status === 400 ? 'E-mail ou senha incorretos' : 'Não foi possível entrar: ' + err.message);
   });
 });
+
+/* --- Senha: "Esqueci a senha" (link por e-mail) e "Alterar senha" (com login) ---
+   O link do e-mail volta para o app com os tokens no hash (#access_token=…&type=recovery). */
+document.addEventListener('click', function(e){
+  const b = e.target.closest && e.target.closest('[data-esqueci]'); if(!b) return;
+  const f = b.closest('form'), campo = $('input[type=email]', f), email = campo.value.trim();
+  if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){
+    toast('Digite seu e-mail no campo acima e toque de novo em “Esqueci a senha”');
+    campo.focus();
+    return;
+  }
+  b.disabled = true; b.textContent = 'Enviando…';
+  nuvemFetch('/auth/v1/recover?redirect_to=' + encodeURIComponent(location.origin + location.pathname),
+    {method:'POST', headers:{apikey:NUVEM_CHAVE, 'Content-Type':'application/json'}, body:JSON.stringify({email})}
+  ).then(function(){
+    toast('Se esse e-mail tiver conta, chega um link para criar uma senha nova. Confira também o spam.', null, {label:'OK', fn(){}});
+  }).catch(function(err){
+    toast(err.message === 'offline' ? 'Sem conexão com a internet'
+      : err.status === 429 ? 'Muitos pedidos seguidos. Espere alguns minutos e tente de novo.'
+      : 'Não foi possível enviar o e-mail: ' + err.message);
+  }).finally(function(){ b.disabled = false; b.textContent = 'Esqueci a senha'; });
+});
+
+/** recuperacao: veio do link do e-mail (não pede a senha atual; a sincronização espera o sheet fechar). */
+function abrirNovaSenha(recuperacao){
+  const s = nuvemSessao(); if(!s) return;
+  abrirSheet({titulo: recuperacao ? 'Criar nova senha' : 'Alterar senha', autofoco:'sempre',
+    corpo:'<form id="novaSenhaForm" autocomplete="on" novalidate>' +
+      (recuperacao ? '<p style="font-size:14px;color:var(--text-2);margin-bottom:12px">Você entrou pelo link do e-mail. Escolha a senha nova para <b>' + esc(s.email || '') + '</b>.</p>' : '') +
+      '<input type="email" name="email" autocomplete="username" value="' + esc(s.email || '') + '" hidden>' +
+      '<div class="field"><label for="novaSenha1">Nova senha</label><input class="inp" id="novaSenha1" type="password" autocomplete="new-password" minlength="6"></div>' +
+      '<div class="field"><label for="novaSenha2">Repita a nova senha</label><input class="inp" id="novaSenha2" type="password" autocomplete="new-password"></div>' +
+      '<p class="hint" style="margin-bottom:12px">' + ic('info',13) + '<span>Pelo menos 6 caracteres. Nos outros aparelhos você continua conectado.</span></p>' +
+      '<button type="submit" class="btn prim blk">Salvar senha</button>' +
+    '</form>',
+    aoMontar(el){
+      $('#novaSenhaForm', el).addEventListener('submit', function(ev){
+        ev.preventDefault();
+        const s1 = $('#novaSenha1', el).value, s2 = $('#novaSenha2', el).value, b = $('button[type=submit]', el);
+        if(s1.length < 6){ toast('A senha precisa ter pelo menos 6 caracteres'); $('#novaSenha1', el).focus(); return; }
+        if(s1 !== s2){ toast('As duas senhas não são iguais'); $('#novaSenha2', el).focus(); return; }
+        b.disabled = true; b.textContent = 'Salvando…';
+        nuvemTrocarSenha(s1).then(function(){
+          fecharSheet();
+          toast('Senha alterada. Use a nova senha para entrar nos outros aparelhos.');
+        }).catch(function(err){
+          b.disabled = false; b.textContent = 'Salvar senha';
+          const msg = String(err.message || '');
+          toast(msg === 'offline' ? 'Sem conexão com a internet'
+            : msg === 'expirou' ? 'A sessão expirou. Entre de novo ou peça outro link em “Esqueci a senha”.'
+            : /different/i.test(msg) ? 'A nova senha precisa ser diferente da atual'
+            : /reauthenticat/i.test(msg) ? 'Por segurança, saia e entre de novo antes de trocar a senha'
+            : /weak|at least|characters/i.test(msg) ? 'Senha fraca. Use mais caracteres, misturando letras e números.'
+            : 'Não foi possível trocar a senha: ' + msg);
+        });
+      });
+    },
+    aoFechar(){
+      if(!recuperacao) return;
+      nuvem.pausada = false;
+      render();
+      nuvemSincronizar({primeira:true});
+    }});
+}
+async function nuvemTrocarSenha(senha){
+  for(let i = 0; i < 2; i++){
+    const tk = await nuvemToken(i > 0);
+    try{
+      return await nuvemFetch('/auth/v1/user', {method:'PUT', headers:{apikey:NUVEM_CHAVE, Authorization:'Bearer ' + tk, 'Content-Type':'application/json'},
+        body:JSON.stringify({password:senha})});
+    }catch(e){ if(e.status !== 401 || i > 0) throw e; }
+  }
+}
+/** Chamada no boot, antes do roteamento: tira os tokens (ou o erro) do endereço. */
+function nuvemLerRetornoEmail(){
+  const h = location.hash.replace(/^#/, ''), q = location.search.replace(/^\?/, '');
+  const temHash = /(^|&)(access_token|error|error_code)=/.test(h), temQuery = /(^|&)(error|error_code)=/.test(q);
+  if(!temHash && !temQuery) return;
+  const p = new URLSearchParams(temHash ? h : q);
+  nuvem.retorno = {tipo:p.get('type'), access_token:p.get('access_token'), refresh_token:p.get('refresh_token'),
+    expires_in:Number(p.get('expires_in')) || 3600, expires_at:Number(p.get('expires_at')) || null,
+    erro:p.get('error_code') || p.get('error'), erroTxt:p.get('error_description')};
+  history.replaceState(null, '', location.pathname + (temQuery ? '' : location.search) + '#/hoje');
+}
+/** Devolve true se tratou um retorno do link do e-mail (aí as boas-vindas não abrem). */
+function nuvemTratarRetorno(){
+  const r = nuvem.retorno; nuvem.retorno = null;
+  if(!r) return false;
+  try{ localStorage.setItem(LS_BOAS_VINDAS, 'visto'); }catch(e){}
+  if(r.erro || !r.access_token){
+    console.warn('Link do e-mail', r.erro, r.erroTxt);
+    toast(r.erro === 'otp_expired' ? 'Esse link expirou ou já foi usado. Peça outro em “Esqueci a senha”.' : 'O link do e-mail não funcionou. Peça outro em “Esqueci a senha”.', null,
+      nuvemSessao() ? null : {label:'Entrar', fn:mostrarBoasVindas});
+    return true;
+  }
+  nuvem.pausada = r.tipo === 'recovery';
+  nuvemFetch('/auth/v1/user', {headers:{apikey:NUVEM_CHAVE, Authorization:'Bearer ' + r.access_token}}).then(function(user){
+    return nuvemAbrirSessao({access_token:r.access_token, refresh_token:r.refresh_token, expires_in:r.expires_in, expires_at:r.expires_at, user}, null, nuvem.pausada);
+  }).then(function(){
+    render();
+    if(nuvem.pausada) abrirNovaSenha(true);
+  }).catch(function(err){
+    nuvem.pausada = false;
+    toast(err.message === 'offline' ? 'Sem conexão com a internet. Abra o link do e-mail de novo quando a internet voltar.' : 'O link do e-mail não funcionou. Peça outro em “Esqueci a senha”.');
+  });
+  return true;
+}
 
 /* --- Boas-vindas: primeira abertura num aparelho sem login --- */
 const LS_BOAS_VINDAS = 'gestor.boasVindas';
@@ -5750,6 +5870,7 @@ function mostrarBoasVindas(){
       '<div class="field"><label for="bvEmail">E-mail</label><input class="inp" id="bvEmail" type="email" name="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false"></div>' +
       '<div class="field"><label for="bvSenha">Senha</label><input class="inp" id="bvSenha" type="password" name="password" autocomplete="current-password"></div>' +
       '<button type="submit" class="btn prim blk">' + ic('cloud',15) + 'Entrar</button>' +
+      '<button type="button" class="esqueci" data-esqueci>Esqueci a senha</button>' +
     '</form>' +
     '<button type="button" class="bv-sem" data-bv="sem">Continuar sem login</button>' +
     '<p class="bv-nota">Sem login, os dados ficam só neste aparelho. Dá para entrar depois em Configurações.</p>' +
@@ -5770,7 +5891,7 @@ function fecharBoasVindas(){
 
 function nuvemIniciar(){
   nuvem.pronto = true;
-  if(!nuvemSessao() && !lerLS(LS_BOAS_VINDAS)) mostrarBoasVindas();
+  if(!nuvemTratarRetorno() && !nuvemSessao() && !lerLS(LS_BOAS_VINDAS)) mostrarBoasVindas();
   document.addEventListener('visibilitychange', function(){
     if(!nuvemSessao()) return;
     if(document.visibilityState === 'visible') nuvemSincronizar();
@@ -5900,6 +6021,7 @@ function boot(){
   persistirPrefs();
   aplicarTema();
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if(state.prefs.tema === 'auto') aplicarTema(); });
+  nuvemLerRetornoEmail();   // link de recuperação de senha: tira os tokens do endereço antes do roteamento
   if(!location.hash) history.replaceState(null, '', '#/hoje');
   state.ui.rota = parseHash();
   window.addEventListener('hashchange', aoMudarHash);
