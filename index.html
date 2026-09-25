@@ -3,6 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self' https://jplnfichttoyjfxbmxof.supabase.co; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#f6f7f9" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0b0c0f" media="(prefers-color-scheme: dark)">
@@ -5403,6 +5405,19 @@ document.addEventListener('dblclick', function(e){
   if(rz){ delete state.prefs.larguras[rz.dataset.rsz]; persistirPrefs(); render(); toast('Largura da coluna restaurada'); }
 });
 
+/** Arquivo vindo de fora: ids, status e seções entram no HTML sem escape (data-id="…"), então
+    só passam valores sem aspas nem sinais de HTML. Nas preferências, nenhum texto pode tê-los. */
+const CHAVES_ID = /^(id|\w+Id|status|secao|tipo|subtipo|kind|modeloAtivo)$/;
+function importacaoSegura(dados, prefs){
+  const perigo = /["'<>&`\\]/;
+  function ok(v, k, tudo){
+    if(typeof v === 'string') return !((tudo || CHAVES_ID.test(k)) && perigo.test(v));
+    if(Array.isArray(v)) return v.every(x => ok(x, k, tudo));
+    if(v && typeof v === 'object') return Object.keys(v).every(c => !(tudo && perigo.test(c)) && ok(v[c], c, tudo));
+    return true;
+  }
+  return ok(dados, '', false) && ok(prefs || null, '', true);
+}
 function importarArquivo(file){
   const fr = new FileReader();
   fr.onload = function(){
@@ -5410,13 +5425,14 @@ function importarArquivo(file){
       const j = JSON.parse(String(fr.result));
       const d = j.dados || j;
       if(!d || !Array.isArray(d.items) || !Array.isArray(d.categorias)) throw new Error('formato');
+      if(!importacaoSegura(d, j.prefs)) throw new Error('inseguro');
       const snap = snapshot();
       state.dados = migrarDados(d, Number(j.schemaVersion || 1));
       normalizarDados();
       if(j.prefs && [2,3,4].indexOf(j.prefs.versao) !== -1){ state.prefs = lerPrefs(j.prefs); persistirPrefs(); aplicarTema(); }
       persistir(); render();
       toast('Dados importados (' + state.dados.items.length + ' itens)', () => restaurar(snap));
-    }catch(err){ toast('Arquivo inválido: não é um JSON exportado por este app'); }
+    }catch(err){ toast(err.message === 'inseguro' ? 'Arquivo recusado: tem conteúdo que poderia rodar código no app' : 'Arquivo inválido: não é um JSON exportado por este app'); }
     const f = $('#fileImport'); if(f) f.value = '';
   };
   fr.readAsText(file);
