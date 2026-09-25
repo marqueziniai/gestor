@@ -795,6 +795,23 @@ mark{background:color-mix(in srgb,var(--caution) 32%,transparent);color:inherit;
 .mais-item .n{font-size:12px;font-weight:700;border-radius:99px;padding:1px 8px;background:var(--surface-2);color:var(--text-2)}
 .mais-item .n.warn{background:var(--warn-soft);color:var(--warn)}
 .sb-alerta{color:var(--warn);flex:none}
+/* kanban no desktop: arrastar o fundo rola para os lados */
+@media (pointer:fine){ .kanban{cursor:grab} :where(.kanban .kcol-h, .kanban .kcol-body > *){cursor:auto} }
+.kanban.panando{scroll-snap-type:none;cursor:grabbing;user-select:none}
+.kanban.panando *{cursor:grabbing !important}
+/* Boas-vindas: primeira abertura num aparelho sem login (abaixo dos toasts, acima de tudo o resto) */
+.bv{position:fixed;inset:0;z-index:94;background:var(--bg);overflow-y:auto;-webkit-overflow-scrolling:touch;display:flex;
+  padding:max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));transition:opacity var(--t)}
+.bv.saindo{opacity:0;pointer-events:none}
+.bv-in{margin:auto;width:100%;max-width:380px;display:flex;flex-direction:column;gap:18px}
+.bv-logo{width:64px;height:64px;border-radius:16px;box-shadow:var(--shadow-2)}
+.bv h1{font-size:26px;line-height:1.2;font-weight:700;letter-spacing:-.02em;color:var(--text)}
+.bv-sub{font-size:15px;line-height:1.5;color:var(--text-2)}
+.bv-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px;box-shadow:var(--shadow-1)}
+.bv-card .field:last-of-type{margin-bottom:14px}
+.bv-sem{align-self:center;font-size:15px;font-weight:550;color:var(--accent);padding:10px 14px;border-radius:var(--r-md)}
+.bv-sem:hover{background:var(--accent-soft)}
+.bv-nota{font-size:12.5px;line-height:1.5;color:var(--text-3);text-align:center}
 </style>
 </head>
 <body>
@@ -847,8 +864,8 @@ const PAGINAS = {
   revisao:    {nome:'Revisão',        icone:'refresh', dica:'Revisão semanal: o que precisa de atenção'},
   concluidos: {nome:'Concluídos',     icone:'checkSq', dica:'Arquivo pesquisável do que já foi feito'},
   lixeira:    {nome:'Lixeira',        icone:'trash',   dica:'Excluídos ficam ' + DIAS_LIXEIRA + ' dias antes de sumir'},
-  estrutura:  {nome:'Estrutura',      icone:'structure', dica:'Status, campos, visões e modelos'},
-  config:     {nome:'Configurações',  icone:'gear',    dica:'Categorias, aparência e dados'}
+  estrutura:  {nome:'Estrutura',      icone:'structure', dica:'Status, campos, visões, categorias e modelos'},
+  config:     {nome:'Configurações',  icone:'gear',    dica:'Conta, aparência e dados'}
 };
 /** Onde um item pode morar. "futuro" é uma classificação dentro da Entrada. */
 const LOCAIS = {entrada:'Entrada', futuro:'Futuro', projetos:'Projetos', tarefas:'Tarefas'};
@@ -1155,6 +1172,7 @@ function persistir(){
 function persistirPrefs(){
   try{ localStorage.setItem(LS_PREFS, JSON.stringify(state.prefs)); }
   catch(e){ console.warn('Não foi possível gravar as preferências', e); }
+  nuvemMudou(true);
 }
 function lerLS(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } }
 function carregar(){
@@ -2435,138 +2453,36 @@ function excluirModelo(mid){
 /* =========================================================================
    MÓDULO 9 — DADOS DE EXEMPLO (datas relativas ao dia atual)
    ========================================================================= */
+/** Tutorial: um card de cada tipo, cada um explicando o que é. Uma só categoria (Trabalho). */
 function dadosExemplo(){
   const h = hojeISO(), D = n => addDias(h, n), T = min => new Date(Date.now() - min*60000).toISOString();
   const est = estruturaPadrao();
-  est.campos.push({id:'cf-prioridade', nome:'Prioridade', tipo:'selecao', aplica:['projeto','tarefa'], opcoes:['Alta','Média','Baixa'], sistema:false});
-  est.layouts.card.splice(1, 0, {id:'cf-prioridade', visivel:true});
-  est.layouts.kanban.splice(est.layouts.kanban.findIndex(e => e.id === 'status') + 1, 0, {id:'cf-prioridade', visivel:true});
-  est.layouts.lista.push({id:'cf-prioridade', visivel:false});
   const S = (tipo, nome) => est.status[tipo].find(s => s.nome === nome).id;
-  const categorias = [
-    {id:'cat-trabalho', nome:'Trabalho', cor:'#3b82f6'},
-    {id:'cat-pessoal',  nome:'Pessoal',  cor:'#10b981'},
-    {id:'cat-estudos',  nome:'Estudos',  cor:'#8b5cf6'},
-    {id:'cat-casa',     nome:'Casa',     cor:'#f59e0b'}
-  ];
+  const categorias = [{id:'cat-trabalho', nome:'Trabalho', cor:'#3b82f6'}];
   const lista = [];
-  const L = (min, o) => Object.assign({id:uid('lg'), kind:'log', em:T(min)}, o);
-  const C = (min, texto) => ({id:uid('cm'), kind:'comentario', texto, em:T(min), editadoEm:null});
-  function add(o, ativ){
-    const criado = o.criadoEm || T(60*24*7);
+  function add(o){
+    const criado = T(30);
     const it = Object.assign({id:uid(), tipo:null, subtipo:null, origemId:null, secao:'entrada', categoriaId:null, projetoId:null,
       titulo:'', descricao:'', dataLembrete:null, textoLembrete:'', dataEntrega:null, status:null, extras:{}, recorrencia:{},
       criadoEm:criado, atualizadoEm:criado, atividade:[]}, o);
-    it.atividade = [{id:uid('lg'), kind:'log', icone:'sparkle', texto:'Item criado em ' + LOCAIS[it.secao], em:criado}].concat(ativ || []);
-    it.atividade.sort((a,b) => a.em < b.em ? -1 : 1);
+    it.atividade = [{id:uid('lg'), kind:'log', icone:'sparkle', texto:'Item criado em ' + LOCAIS[it.secao], em:criado}];
     lista.push(it);
     return it;
   }
-  const stP = (de, para, min) => L(min, {icone:'target', rotulo:'Status do projeto', de, para});
-  const stT = (de, para, min) => L(min, {icone:'target', rotulo:'Status da tarefa', de, para});
-  const acp = (de, para, min) => L(min, {icone:'bell', rotulo:'Data Lembrete', de, para, fmt:'data'});
 
-  /* ---- 4 projetos, cada um em um status diferente ---- */
-  add({id:'proj-site', tipo:'projeto', secao:'projetos', categoriaId:'cat-trabalho', titulo:'Redesign do site institucional',
-    descricao:'Reformular a identidade visual e a estrutura de páginas do site, com novo fluxo de conversão.',
-    dataLembrete:D(0), textoLembrete:'Revisar com o marketing o que ficou pronto na semana e o que trava a próxima página.',
-    dataEntrega:D(12), status:S('projeto','Em Andamento'), extras:{'cf-prioridade':'Alta'},
-    recorrencia:{dataLembrete:{freq:'semanal'}}, criadoEm:T(60*24*22)},
-    [stP('Não Iniciado','Em Andamento',60*24*9), C(60*24*8,'Fechamos o escopo com o time de marketing. Foco em 6 páginas principais.'),
-     acp(D(-9), D(-3), 60*24*4), L(60*24*4-5, {icone:'repeat', rotulo:'Recorrência — Data Lembrete', de:'Não repete', para:'Toda semana'}),
-     C(60*30,'Wireframes da home aprovados. Seguindo para a página de produtos.'), acp(D(-3), D(0), 60*5)]);
-  add({id:'proj-crm', tipo:'projeto', secao:'projetos', categoriaId:'cat-trabalho', titulo:'Migração do CRM',
-    descricao:'Migrar base de contatos e automações do sistema antigo, sem perder histórico de negociações.',
-    dataLembrete:D(-2), textoLembrete:'Cobrar o fornecedor sobre a liberação da API de exportação.',
-    dataEntrega:D(25), status:S('projeto','Aguardando'), extras:{'cf-prioridade':'Média'}, criadoEm:T(60*24*15)},
-    [C(60*24*6,'Aguardando o fornecedor liberar o acesso à API de exportação.'), stP('Em Andamento','Aguardando',60*24*5),
-     acp(D(-6), D(-2), 60*24*2), C(60*20,'Cobrei o fornecedor por e-mail. Prometeram retorno em 48h.')]);
-  add({id:'proj-cozinha', tipo:'projeto', secao:'projetos', categoriaId:'cat-casa', titulo:'Reforma da cozinha',
-    descricao:'Trocar armários, bancada e iluminação. Orçamento máximo já definido em família.',
-    dataEntrega:D(40), status:S('projeto','Não Iniciado'), extras:{'cf-prioridade':'Baixa'}, criadoEm:T(60*24*10)},
-    [C(60*24*3,'Três marceneiros contatados, dois responderam.')]);
-  add({id:'proj-ds', tipo:'projeto', secao:'projetos', categoriaId:'cat-estudos', titulo:'Curso de Data Science',
-    descricao:'Concluir os 6 módulos e entregar o projeto final para certificação.',
-    dataLembrete:D(2), dataEntrega:D(6), status:S('projeto','Em Aprovação'), extras:{'cf-prioridade':'Alta'}, criadoEm:T(60*24*40)},
-    [stP('Em Andamento','Em Aprovação',60*24*12), C(60*24*11,'Projeto final enviado para avaliação do tutor.'), acp(D(-1), D(2), 60*24)]);
-
-  /* ---- Tarefas dos projetos ---- */
-  [
-    ['proj-site','cat-trabalho','Mapear páginas e conteúdos atuais','Concluído', null, D(-10)],
-    ['proj-site','cat-trabalho','Wireframes das 6 páginas principais','Em Revisão', null, D(2)],
-    ['proj-site','cat-trabalho','Definir nova paleta e tipografia','Em Andamento', D(-1), D(4)],
-    ['proj-site','cat-trabalho','Escrever textos da home','Para Fazer', null, D(7)],
-    ['proj-site','cat-trabalho','Homologar em ambiente de testes','Não Iniciado', null, D(11)],
-    ['proj-crm','cat-trabalho','Exportar base de contatos','Aguardando', D(0), D(3)],
-    ['proj-crm','cat-trabalho','Mapear campos entre os sistemas','Em Andamento', null, D(5)],
-    ['proj-crm','cat-trabalho','Recriar automações de e-mail','Não Iniciado', null, D(15)],
-    ['proj-crm','cat-trabalho','Treinar o time comercial','Não Iniciado', null, D(22)],
-    ['proj-cozinha','cat-casa','Levantar três orçamentos','Em Andamento', null, D(0)],
-    ['proj-cozinha','cat-casa','Escolher revestimento da bancada','Não Iniciado', null, null],
-    ['proj-cozinha','cat-casa','Agendar início da obra','Não Iniciado', null, D(20)],
-    ['proj-ds','cat-estudos','Módulo 5 — Regressão','Concluído', null, D(-8)],
-    ['proj-ds','cat-estudos','Módulo 6 — Séries temporais','Concluído', null, D(-3)],
-    ['proj-ds','cat-estudos','Revisar projeto final com o tutor','Aguardando', null, D(-1)],
-    ['proj-ds','cat-estudos','Emitir certificado','Não Iniciado', null, D(6)]
-  ].forEach(function(s, i){
-    const ativ = [];
-    if(i === 1){ ativ.push(stT('Em Andamento','Em Revisão',60*24*2)); ativ.push(C(60*24*2-30,'Subi os wireframes no Figma, link no card do projeto.')); }
-    if(i === 2) ativ.push(acp(D(-3), D(-1), 60*24*2));
-    if(i === 5) ativ.push(acp(D(-3), D(0), 60*24));
-    if(i === 9) ativ.push(C(60*36,'Dois orçamentos recebidos, falta o terceiro.'));
-    add({tipo:'tarefa', secao:'tarefas', projetoId:s[0], categoriaId:s[1], titulo:s[2], status:S('tarefa', s[3]),
-      dataLembrete:s[4], dataEntrega:s[5], extras: i === 2 || i === 5 ? {'cf-prioridade':'Alta'} : {}, criadoEm:T(60*24*(6+i))}, ativ);
-  });
-
-  /* ---- Tarefas sem projeto ---- */
-  [
-    ['cat-trabalho','Responder e-mail do fornecedor de embalagens','Para Fazer', D(-1), D(1), 'Confirmar prazo e condições de pagamento antes do fechamento.', null],
-    ['cat-pessoal','Agendar consulta no dentista','Não Iniciado', null, D(0), '', null],
-    ['cat-casa','Revisar contrato de aluguel','Em Revisão', null, D(2), 'Checar cláusula de reajuste e multa por rescisão.', null],
-    ['cat-estudos','Ler capítulo 4 de Estatística Aplicada','Em Andamento', null, D(0), '', null],
-    ['cat-pessoal','Comprar presente de aniversário da Ana','Aguardando', D(2), D(4), 'Ela comentou sobre a cafeteira italiana.', null],
-    ['cat-casa','Organizar recibos do mês','Concluído', null, D(-2), '', null],
-    ['cat-pessoal','Planejar viagem de férias','Não Iniciado', null, null, 'Pesquisar destinos de praia com voo direto.', null],
-    ['cat-pessoal','Atualizar currículo','Para Fazer', null, null, '', null],
-    ['cat-trabalho','Preparar apresentação trimestral','Em Andamento', null, D(5), 'Números de vendas, retenção e roadmap do próximo trimestre.', null],
-    ['cat-trabalho','Enviar relatório semanal de vendas','Para Fazer', null, D(1), 'Consolidar números da semana e enviar para a diretoria.', {freq:'semanal'}],
-    ['cat-casa','Pagar contas da casa','Não Iniciado', null, D(-1), 'Luz, água, internet e condomínio.', {freq:'mensal'}]
-  ].forEach(function(s, i){
-    const ativ = [];
-    if(i === 0){ ativ.push(acp(D(-4), D(-1), 60*24*2)); ativ.push(C(60*24*2-20,'Pedi a tabela atualizada, aguardando resposta.')); }
-    if(i === 2){ ativ.push(C(60*24*3,'Advogado pediu para revisar a cláusula 7 com calma.')); ativ.push(stT('Em Andamento','Em Revisão',60*22)); }
-    if(i === 5) ativ.push(stT('Em Andamento','Concluído',60*24*2));
-    if(i === 8) ativ.push(C(60*10,'Slides 1 a 6 prontos. Falta a parte de roadmap.'));
-    if(s[6]) ativ.push(L(60*24*3, {icone:'repeat', rotulo:'Recorrência — Data de Entrega', de:'Não repete', para:descreverRec(s[6])}));
-    add({tipo:'tarefa', secao:'tarefas', categoriaId:s[0], titulo:s[1], status:S('tarefa', s[2]),
-      dataLembrete:s[3], dataEntrega:s[4], descricao:s[5], recorrencia: s[6] ? {dataEntrega:s[6]} : {},
-      textoLembrete: i === 0 ? 'Ver se chegou a tabela de preços atualizada.' : i === 4 ? 'Confirmar com a loja se a cafeteira chega antes do aniversário.' : '',
-      extras: i === 8 ? {'cf-prioridade':'Alta'} : i === 1 ? {'cf-prioridade':'Média'} : {}, criadoEm:T(60*24*(2+i))}, ativ);
-  });
-
-  /* ---- Entrada: itens para triagem ---- */
-  [['Ideia: newsletter mensal para clientes','Conteúdo curto com bastidores e novidades.'],['Verificar garantia da geladeira',''],
-   ['Pesquisar curso de inglês online','Preferência por turmas à noite.'],['Trocar plano de celular','']]
-  .forEach((s, i) => add({secao:'entrada', titulo:s[0], descricao:s[1], criadoEm:T(60*(3 + i*11))}));
-
-  /* ---- Futuro (classificação dentro da Entrada) ---- */
-  add({tipo:'projeto', secao:'futuro', categoriaId:'cat-pessoal', titulo:'Abrir canal no YouTube', descricao:'Série sobre produtividade sem firula.',
-    status:S('projeto','Não Iniciado'), criadoEm:T(60*24*30)}, [C(60*24*20,'Deixando para depois da reforma.')]);
-  add({tipo:'projeto', secao:'futuro', categoriaId:'cat-trabalho', titulo:'Automatizar relatórios financeiros', descricao:'Reduzir o fechamento mensal de 3 dias para 1.',
-    status:S('projeto','Não Iniciado'), criadoEm:T(60*24*26)});
-  add({tipo:'tarefa', secao:'futuro', categoriaId:'cat-estudos', titulo:'Aprender Figma avançado', descricao:'Auto-layout, variáveis e componentes.',
-    status:S('tarefa','Não Iniciado'), criadoEm:T(60*24*18)});
-  add({tipo:'tarefa', secao:'futuro', categoriaId:'cat-casa', titulo:'Reorganizar a garagem', status:S('tarefa','Não Iniciado'), criadoEm:T(60*24*12)});
-  add({secao:'futuro', titulo:'Ideia: podcast sobre carreira', descricao:'Sem formato definido ainda.', criadoEm:T(60*24*9)});
-
-  /* ---- Próximas ações (o Curso de Data Science fica sem, para mostrar o alerta) ---- */
-  const tarefa = t => lista.find(x => x.titulo === t);
-  [['proj-site','Definir nova paleta e tipografia'],['proj-crm','Mapear campos entre os sistemas'],['proj-cozinha','Levantar três orçamentos']].forEach(function(r){
-    const p = lista.find(x => x.id === r[0]), t = tarefa(r[1]);
-    p.proximaId = t.id;
-    p.atividade.push(L(60*24*3, {icone:'play', texto:'Próxima ação: “' + t.titulo + '”'}));
-  });
-  lista.forEach(it => { if(it.tipo && it.status === est.status[it.tipo].find(s => s.final).id) it.concluidoEm = T(60*24*2); });
+  add({secao:'entrada', titulo:'Este é um item na Entrada',
+    descricao:'Tudo o que você anota com o botão + cai primeiro na Entrada, sem precisar decidir nada na hora. Depois, na triagem, você escolhe: vira tarefa, vira projeto, vai para o Futuro ou é descartado.'});
+  const proj = add({tipo:'projeto', secao:'projetos', categoriaId:'cat-trabalho', titulo:'Este é um projeto',
+    descricao:'Um projeto é um resultado que pede várias tarefas. Ele fica em Projetos, mostra o progresso das tarefas e a próxima ação. Abra o card para ver os campos, os comentários e o histórico.',
+    dataLembrete:D(0), textoLembrete:'Isto é um lembrete: uma data para voltar a olhar o item. Ele aparece em Hoje com o sino e some quando você marca como feito.',
+    dataEntrega:D(14), status:S('projeto','Em Andamento')});
+  const comProj = add({tipo:'tarefa', secao:'tarefas', categoriaId:'cat-trabalho', projetoId:proj.id, titulo:'Esta é uma tarefa com projeto',
+    descricao:'Tarefas ligadas a um projeto aparecem dentro dele e contam no progresso. Esta é a próxima ação do projeto: o primeiro passo concreto para ele andar.',
+    dataEntrega:D(0), status:S('tarefa','Para Fazer')});
+  add({tipo:'tarefa', secao:'tarefas', categoriaId:'cat-trabalho', titulo:'Esta é uma tarefa sem projeto',
+    descricao:'Uma tarefa avulsa, que não pertence a nenhum projeto. Fica em Tarefas e aparece em Hoje quando a entrega chega. Toque no círculo para concluir.',
+    dataEntrega:D(1), status:S('tarefa','Não Iniciado')});
+  proj.proximaId = comProj.id;
 
   return {categorias, estrutura:est, items:lista, lixeira:[], modelos:[], modeloAtivo:null};
 }
@@ -3621,7 +3537,11 @@ function renderSidebar(){
     '</div>' +
     '<div class="sb-foot">' +
       '<button type="button" class="sb-item" data-act="nav" data-view="estrutura"' + (r.view === 'estrutura' ? ' aria-current="page"' : '') + ' data-tip="Estrutura (modo edição)" aria-label="Estrutura">' + ic('structure',18) + '<span class="lbl">Estrutura</span></button>' +
-      '<button type="button" class="sb-item" data-act="nav" data-view="config"' + (r.view === 'config' ? ' aria-current="page"' : '') + ' data-tip="Configurações" aria-label="Configurações">' + ic('gear',18) + '<span class="lbl">Configurações</span></button></div>';
+      '<button type="button" class="sb-item" data-act="nav" data-view="config"' + (r.view === 'config' ? ' aria-current="page"' : '') + ' data-tip="Configurações" aria-label="Configurações">' + ic('gear',18) + '<span class="lbl">Configurações</span></button>' +
+      (nuvemSessao()
+        ? '<button type="button" class="sb-item" data-act="nuvem-sair" data-tip="Sair da conta" aria-label="Sair da conta">' + ic('logout',18) + '<span class="lbl">Sair</span></button>'
+        : '<button type="button" class="sb-item" data-act="nuvem-entrar" data-tip="Entrar na conta" aria-label="Entrar na conta">' + ic('cloud',18) + '<span class="lbl">Entrar</span></button>') +
+    '</div>';
 }
 function renderBottombar(){
   const c = contadores(), r = state.ui.rota;
@@ -3640,7 +3560,12 @@ function sheetMais(){
     const x = n[k];
     return '<button type="button" class="mais-item" data-act="nav" data-view="' + k + '"' + (r.view === k ? ' aria-current="page"' : '') + '>' + ic(PAGINAS[k].icone, 20) +
       '<span class="t">' + esc(PAGINAS[k].nome) + '<small>' + esc(PAGINAS[k].dica) + '</small></span>' + (x && x[0] ? '<span class="n ' + x[1] + '">' + x[0] + '</span>' : '') + '</button>';
-  }).join('') + '</div>'});
+  }).join('') + '<div class="divider"></div>' + (function(){
+    const s = nuvemSessao();
+    return s
+      ? '<button type="button" class="mais-item" data-act="nuvem-sair">' + ic('logout', 20) + '<span class="t">Sair<small>Conectado como ' + esc(s.email || '') + '</small></span></button>'
+      : '<button type="button" class="mais-item" data-act="nuvem-entrar">' + ic('cloud', 20) + '<span class="t">Entrar<small>Sincronizar com sua conta</small></span></button>';
+  })() + '</div>'});
 }
 
 const ORDENS = {
@@ -4253,7 +4178,8 @@ function viewRevisao(){
 }
 
 /* ---------- CONFIGURAÇÕES ---------- */
-function viewConfig(){
+/** Categorias (aba de Estrutura). */
+function editorCategorias(){
   const cats = categorias().map(function(c){
     const n = items().filter(i => i.categoriaId === c.id).length;
     return '<div class="cat-line"><input type="color" class="cor-in" style="width:32px;height:32px" value="' + esc(c.cor) + '" data-act="cat-cor" data-id="' + c.id + '" aria-label="Cor de ' + esc(c.nome) + '">' +
@@ -4261,21 +4187,25 @@ function viewConfig(){
       '<span class="muted" style="white-space:nowrap">' + n + ' item(ns)</span>' +
       '<button type="button" class="icon-btn sm" data-act="cat-excluir" data-id="' + c.id + '" aria-label="Excluir categoria ' + esc(c.nome) + '">' + ic('trash',16) + '</button></div>';
   }).join('');
+  return '<section class="ebox"><h3>Categorias</h3><span class="muted">Agrupam projetos e tarefas por área (ex.: Trabalho, Pessoal). Aparecem no menu lateral e nos filtros.</span>' +
+    '<div style="margin-top:10px">' + (cats || '<p class="muted">Nenhuma categoria.</p>') + '</div>' +
+    '<div style="display:flex;gap:8px;margin-top:12px"><input class="inp" id="novaCat" placeholder="Nova categoria" aria-label="Nome da nova categoria">' +
+    '<button type="button" class="btn prim" data-act="cat-add">' + ic('plus',15) + 'Adicionar</button></div>' +
+    '<p class="hint">' + ic('info',13) + '<span>Ao excluir uma categoria, os itens dela ficam “Sem categoria”.</span></p></section>';
+}
+function viewConfig(){
   const temas = [['claro','Claro','sun'],['escuro','Escuro','moon'],['auto','Automático','auto']];
   const sw = (rot, sub, act, on) => '<div class="switch"><span class="tx">' + rot + '<small>' + sub + '</small></span><button type="button" class="toggle' + (on ? ' on' : '') + '" data-act="' + act + '" role="switch" aria-checked="' + on + '" aria-label="' + rot + '"></button></div>';
   return '<div class="cfg">' +
-    '<h2 class="sect-t">Categorias</h2><section class="card">' + (cats || '<p class="muted">Nenhuma categoria.</p>') +
-      '<div style="display:flex;gap:8px;margin-top:12px"><input class="inp" id="novaCat" placeholder="Nova categoria" aria-label="Nome da nova categoria">' +
-      '<button type="button" class="btn prim" data-act="cat-add">' + ic('plus',15) + 'Adicionar</button></div>' +
-      '<p class="hint">' + ic('info',13) + '<span>Ao excluir uma categoria, os itens dela ficam “Sem categoria”.</span></p></section>' +
     '<h2 class="sect-t">Aparência e navegação</h2><section class="card">' +
       '<div class="seg" role="radiogroup" aria-label="Tema">' + temas.map(t => '<button type="button" class="' + (state.prefs.tema === t[0] ? 'on' : '') + '" data-act="set-tema" data-v="' + t[0] + '" role="radio" aria-checked="' + (state.prefs.tema === t[0]) + '">' + ic(t[2],15) + t[1] + '</button>').join('') + '</div>' +
       '<div class="divider"></div>' +
       sw('Quebrar linhas', 'Padrão em todas as seções e visões. Desligado: textos longos são truncados', 'tog-quebra', state.prefs.listaQuebra) +
       sw('Menu lateral compacto (desktop)', 'Mostra só os ícones, com dica ao passar o mouse', 'toggle-sidebar-cfg', state.prefs.sidebarCompacta) +
       '<p class="hint">' + ic('info',13) + '<span>Concluídos saem das listas sozinhos e ficam em <a href="#/concluidos">Concluídos</a>; excluídos ficam ' + DIAS_LIXEIRA + ' dias na <a href="#/lixeira">Lixeira</a>.</span></p></section>' +
-    '<h2 class="sect-t">Estrutura</h2><section class="card"><p style="font-size:14px;color:var(--text-2);margin-bottom:10px">Status das colunas do kanban, campos de projetos e tarefas, campos visíveis em card, kanban e lista e modelos de estrutura salvos.</p>' +
+    '<h2 class="sect-t">Estrutura</h2><section class="card"><p style="font-size:14px;color:var(--text-2);margin-bottom:10px">Status das colunas do kanban, campos de projetos e tarefas, campos visíveis em card, kanban e lista, categorias e modelos de estrutura salvos.</p>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-act="nav" data-view="estrutura">' + ic('structure',15) + 'Abrir estrutura (modo edição)</button>' +
+      '<button type="button" class="btn" data-act="aba-estrutura" data-v="categorias">' + ic('tag',15) + 'Categorias</button>' +
       '<button type="button" class="btn" data-act="aba-estrutura" data-v="modelos">' + ic('save',15) + 'Modelos de estrutura</button></div></section>' +
     '<h2 class="sect-t">Conta e sincronização</h2><section class="card" id="nuvemBox">' + nuvemHTML() + '</section>' +
     '<h2 class="sect-t">Dados</h2><section class="card"><div style="display:flex;gap:8px;flex-wrap:wrap">' +
@@ -4350,9 +4280,11 @@ function editorModelos(){
 }
 function viewEstrutura(){
   const aba = state.ui.estruturaAba;
-  const abas = [['status','Status'],['campos','Campos'],['visoes','Campos visíveis'],['modelos','Modelos']];
+  const abas = [['status','Status'],['campos','Campos'],['visoes','Campos visíveis'],['categorias','Categorias'],['modelos','Modelos']];
   let corpo = '';
-  if(aba === 'modelos'){
+  if(aba === 'categorias'){
+    corpo = editorCategorias();
+  }else if(aba === 'modelos'){
     corpo = editorModelos();
   }else if(aba === 'status'){
     corpo = '<div class="egrid dois">' +
@@ -4755,7 +4687,15 @@ function onPointerDown(e){
   }
   const card = e.target.closest('[data-drag-id]');
   const sw = e.target.closest('[data-swipe-id]');
-  if(!card && !sw) return;
+  if(!card && !sw){
+    // desktop: arrastar o fundo do kanban (fora dos cards) rola para os lados
+    const kb = e.pointerType === 'mouse' && e.target.closest('.kanban');
+    if(kb && !e.target.closest('button, [contenteditable], [data-edit], [data-act]') && kb.scrollWidth > kb.clientWidth){
+      e.preventDefault();   // sem seleção de texto durante o arraste
+      ptr = {modo:'pan', kb, x0:e.clientX, y0:e.clientY, x:e.clientX, y:e.clientY, sl0:kb.scrollLeft, ativo:false};
+    }
+    return;
+  }
   ptr = {modo: card ? 'drag' : 'swipe', el: card || sw, id: card ? card.dataset.dragId : sw.dataset.swipeId,
          toque: e.pointerType !== 'mouse', x0:e.clientX, y0:e.clientY, x:e.clientX, y:e.clientY, ativo:false, moveu:false, timer:null};
   if(card && ptr.toque){ card.classList.add('pressionando'); ptr.timer = setTimeout(() => { if(ptr && ptr.el === card && !ptr.moveu) ativarDrag(); }, ESPERA_TOQUE); }
@@ -4769,6 +4709,11 @@ function onPointerMove(e){
     ptr.w = Math.round(Math.max(56, Math.min(900, ptr.w0 + dx)));
     const t = ptr.trilhas.slice(); t[ptr.i] = ptr.w + 'px';
     ptr.lista.style.setProperty('--gtc', t.join(' '));   // atualiza todas as linhas ao vivo
+    return;
+  }
+  if(ptr.modo === 'pan'){
+    if(!ptr.ativo){ if(Math.abs(dx) < 4) return; ptr.ativo = true; ptr.kb.classList.add('panando'); }
+    ptr.kb.scrollLeft = ptr.sl0 - dx;
     return;
   }
   if(ptr.modo === 'fechar'){
@@ -4906,6 +4851,7 @@ function onPointerUp(){
   if(!p.ativo) return;
   suprimirClique = true; setTimeout(() => { suprimirClique = false; }, 80);
   if(ghost){ ghost.remove(); ghost = null; }
+  if(p.modo === 'pan'){ p.kb.classList.remove('panando'); return; }
   if(p.modo === 'fechar'){
     const dy = p.y - p.y0, vel = dy / Math.max(1, Date.now() - p.t0);
     p.el.classList.remove('arrastando');
@@ -5491,6 +5437,24 @@ function gravarJSONLS(k, v){ try{ if(v == null) localStorage.removeItem(k); else
 function nuvemMeta(){ return Object.assign({uid:null, base:null, pendente:false, ultimaSync:null}, lerJSONLS(LS_NUVEM) || {}); }
 function nuvemSalvarMeta(m){ gravarJSONLS(LS_NUVEM, m); }
 function nuvemSessao(){ return lerJSONLS(LS_SESSAO); }
+/** Preferências que dependem da tela de cada aparelho e não sincronizam. */
+const PREFS_DO_APARELHO = ['larguras', 'sidebarCompacta', 'sidebarExp', 'dicas'];
+function prefsParaNuvem(){
+  const p = clone(state.prefs);
+  PREFS_DO_APARELHO.forEach(k => delete p[k]);
+  return p;
+}
+function nuvemPayload(){
+  return {dados:state.dados, prefs:prefsParaNuvem(), schema_version:SCHEMA_VERSION, dispositivo:nomeDispositivo()};
+}
+function aplicarPrefsRemotas(p){
+  if(!p || typeof p !== 'object') return;
+  const n = Object.assign({}, p);
+  PREFS_DO_APARELHO.forEach(k => { n[k] = state.prefs[k]; });
+  state.prefs = lerPrefs(n);
+  persistirPrefs();
+  aplicarTema();
+}
 function nomeDispositivo(){
   const u = navigator.userAgent;
   const so = /iPhone/.test(u) ? 'iPhone' : /iPad/.test(u) ? 'iPad' : /Android/.test(u) ? 'Android' : /Windows/.test(u) ? 'Windows' : /Mac/.test(u) ? 'Mac' : 'Outro';
@@ -5498,9 +5462,11 @@ function nomeDispositivo(){
   return so + (nav ? ' · ' + nav : '');
 }
 
-/** Chamada por persistir(): marca a pendência e agenda o envio. */
-function nuvemMudou(){
+/** Chamada por persistir() e persistirPrefs(): marca a pendência e agenda o envio.
+    Preferências só contam com login (mexer em filtros antes de entrar não gera conflito). */
+function nuvemMudou(soPrefs){
   if(!nuvem.pronto || nuvem.aplicando) return;
+  if(soPrefs && !nuvemSessao()) return;
   nuvem.alteracoes++;
   const m = nuvemMeta();
   if(!m.pendente){ m.pendente = true; nuvemSalvarMeta(m); }
@@ -5553,21 +5519,36 @@ async function nuvemRest(metodo, caminho, corpo, prefer){
 }
 
 /* --- Entrar e sair --- */
-async function nuvemEntrar(email, senha){
+/** aoAutenticar: roda com a senha aceita, antes da primeira sincronização (que pode abrir a pergunta de conflito). */
+async function nuvemEntrar(email, senha, aoAutenticar){
   const j = await nuvemFetch('/auth/v1/token?grant_type=password', {method:'POST', headers:{apikey:NUVEM_CHAVE, 'Content-Type':'application/json'}, body:JSON.stringify({email, password:senha})});
   const s = nuvemGuardarSessao(j);
   const m = nuvemMeta();
   if(m.uid !== s.uid){ m.uid = s.uid; m.base = null; m.ultimaSync = null; nuvemSalvarMeta(m); }   // outra conta: começa do zero
   nuvem.st = ''; nuvem.erro = '';
+  if(aoAutenticar) aoAutenticar();
   return nuvemSincronizar({primeira:true});
 }
-function nuvemSair(){
+/** apagar: limpa os dados e as preferências deste aparelho (a cópia da conta continua na nuvem). */
+function nuvemSair(apagar){
   const s = nuvemSessao();
   if(s) fetch(NUVEM_URL + '/auth/v1/logout', {method:'POST', headers:{apikey:NUVEM_CHAVE, Authorization:'Bearer ' + s.access_token}}).catch(() => {});
   gravarJSONLS(LS_SESSAO, null);
+  clearTimeout(nuvem.timer);
   nuvem.st = ''; nuvem.erro = '';
+  if(apagar){
+    nuvem.aplicando = true;
+    try{
+      state.dados = dadosExemplo(); normalizarDados(); persistir();
+      const larg = state.prefs.larguras, comp = state.prefs.sidebarCompacta;
+      state.prefs = prefsPadrao(); state.prefs.larguras = larg; state.prefs.sidebarCompacta = comp;
+      persistirPrefs(); aplicarTema();
+    }finally{ nuvem.aplicando = false; }
+    gravarJSONLS(LS_NUVEM, null);   // próximo login neste aparelho recebe tudo da nuvem, sem conflito
+  }
   render();
-  toast('Você saiu. Os dados continuam neste aparelho.');
+  mostrarBoasVindas();
+  toast(apagar ? 'Você saiu. Os dados deste aparelho foram apagados; os da conta continuam na nuvem.' : 'Você saiu. Os dados continuam neste aparelho.');
 }
 
 /* --- Sincronização --- */
@@ -5601,7 +5582,7 @@ async function nuvemPasso(op){
     // primeira gravação desta conta
     const n0 = nuvem.alteracoes;
     try{
-      const r = await nuvemRest('POST', 'gestor_estado?select=revisao,atualizado_em', {dados:state.dados, schema_version:SCHEMA_VERSION, dispositivo:nomeDispositivo()}, 'return=representation');
+      const r = await nuvemRest('POST', 'gestor_estado?select=revisao,atualizado_em', nuvemPayload(), 'return=representation');
       nuvemConfirmado(r[0], n0);
       if(op.primeira) toast('Dados deste aparelho enviados para a nuvem');
       return 'ok';
@@ -5634,7 +5615,7 @@ async function nuvemPasso(op){
 async function nuvemEnviar(revisao){
   const m = nuvemMeta(), n0 = nuvem.alteracoes;
   const r = await nuvemRest('PATCH', 'gestor_estado?user_id=eq.' + encodeURIComponent(m.uid) + '&revisao=eq.' + revisao + '&select=revisao,atualizado_em',
-    {dados:state.dados, schema_version:SCHEMA_VERSION, dispositivo:nomeDispositivo()}, 'return=representation');
+    nuvemPayload(), 'return=representation');
   if(!r || !r.length) return 'repetir';
   return nuvemConfirmado(r[0], n0);
 }
@@ -5653,8 +5634,9 @@ function nuvemUsuarioEditando(){
   return !!(sheetAtual || popAtual || menuAtual || (a && (a.tagName === 'INPUT' || a.tagName === 'TEXTAREA' || a.isContentEditable)));
 }
 async function nuvemAplicarRemoto(rem, op, escolhido){
-  if(!escolhido && nuvemUsuarioEditando()){ nuvem.timer = setTimeout(() => nuvemSincronizar(op), 4000); return 'sync'; }
-  const cheia = await nuvemRest('GET', 'gestor_estado?select=dados,schema_version,revisao,dispositivo');
+  // logo após entrar, o foco ainda está no campo de senha: não adia
+  if(!escolhido && !op.primeira && nuvemUsuarioEditando()){ nuvem.timer = setTimeout(() => nuvemSincronizar(op), 4000); return 'sync'; }
+  const cheia = await nuvemRest('GET', 'gestor_estado?select=dados,prefs,schema_version,revisao,dispositivo');
   const r = cheia && cheia[0];
   if(!r) return 'repetir';
   if(!escolhido && nuvemMeta().pendente) return 'repetir';   // houve mudança local durante o download
@@ -5663,6 +5645,7 @@ async function nuvemAplicarRemoto(rem, op, escolhido){
     state.dados = migrarDados(r.dados, r.schema_version);
     normalizarDados();
     persistir();
+    aplicarPrefsRemotas(r.prefs);
   }finally{ nuvem.aplicando = false; }
   const m = nuvemMeta(); m.base = r.revisao; m.pendente = false; m.ultimaSync = new Date().toISOString(); nuvemSalvarMeta(m);
   render();
@@ -5700,7 +5683,7 @@ function nuvemStatusHTML(){
 }
 function nuvemHTML(){
   const s = nuvemSessao();
-  if(!s) return '<form id="nuvemLogin" autocomplete="on" novalidate>' +
+  if(!s) return '<form id="nuvemLogin" data-nuvem-login autocomplete="on" novalidate>' +
       '<p style="font-size:14px;color:var(--text-2);margin-bottom:10px">Entre para guardar suas tarefas na nuvem e ver os mesmos dados no celular e no computador. Sem entrar, tudo continua só neste aparelho.</p>' +
       '<div class="field"><label for="nuvemEmail">E-mail</label><input class="inp" id="nuvemEmail" type="email" name="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false"></div>' +
       '<div class="field"><label for="nuvemSenha">Senha</label><input class="inp" id="nuvemSenha" type="password" name="password" autocomplete="current-password"></div>' +
@@ -5712,23 +5695,32 @@ function nuvemHTML(){
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">' +
       '<button type="button" class="btn" data-act="nuvem-sync">' + ic('refresh',15) + 'Sincronizar agora</button>' +
       '<button type="button" class="btn" data-act="nuvem-sair">' + ic('logout',15) + 'Sair</button></div>' +
-    '<p class="hint">' + ic('info',13) + '<span>Projetos, tarefas, lembretes, estrutura e lixeira sincronizam. Tema, filtros e visões ficam separados em cada aparelho.</span></p>';
+    '<p class="hint">' + ic('info',13) + '<span>Projetos, tarefas, lembretes, estrutura, categorias, lixeira e preferências (tema, filtros e visões) ficam salvos na sua conta. Larguras de colunas e o menu lateral ficam em cada aparelho.</span></p>';
 }
 Object.assign(ACOES, {
   'nuvem-sync': () => nuvemSincronizar(),
   'nuvem-sair': () => {
     const m = nuvemMeta();
-    abrirConfirm({titulo:'Sair da conta', texto:(m.pendente ? 'Há mudanças ainda não enviadas para a nuvem. ' : '') + 'Os dados continuam neste aparelho, mas deixam de sincronizar.',
-      opcoes:[{label:'Sair', valor:'ok', variante:'dngr'}, {label:'Cancelar', valor:null}]}).then(r => { if(r === 'ok') nuvemSair(); });
-  }
+    // com mudança não enviada, apagar perderia trabalho: só oferece manter
+    const opcoes = m.pendente
+      ? [{label:'Sair e manter os dados aqui', valor:'manter', variante:'dngr'}, {label:'Cancelar', valor:null}]
+      : [{label:'Sair e apagar os dados deste aparelho', valor:'apagar', variante:'dngr'}, {label:'Sair e manter os dados aqui', valor:'manter'}, {label:'Cancelar', valor:null}];
+    abrirConfirm({titulo:'Sair da conta', texto: m.pendente
+        ? 'Há mudanças ainda não enviadas para a nuvem. Elas ficam neste aparelho e sobem quando você entrar de novo.'
+        : 'Tudo já está salvo na sua conta. Apagar os dados deste aparelho é o mais seguro num aparelho compartilhado.',
+      opcoes}).then(r => { if(r) nuvemSair(r === 'apagar'); });
+  },
+  'nuvem-entrar': () => { fecharSheet(true); mostrarBoasVindas(); }
 });
+/** Formulários de login (Configurações e boas-vindas) têm data-nuvem-login. */
 document.addEventListener('submit', function(e){
-  if(e.target.id !== 'nuvemLogin') return;
+  const f = e.target;
+  if(!f.hasAttribute || !f.hasAttribute('data-nuvem-login')) return;
   e.preventDefault();
-  const email = $('#nuvemEmail').value.trim(), senha = $('#nuvemSenha').value, b = $('#nuvemEntrarBtn');
+  const email = $('input[type=email]', f).value.trim(), senha = $('input[type=password]', f).value, b = $('button[type=submit]', f);
   if(!email || !senha){ toast('Informe e-mail e senha'); return; }
   b.disabled = true; b.textContent = 'Entrando…';
-  nuvemEntrar(email, senha).then(function(){
+  nuvemEntrar(email, senha, () => { if(f.closest('#boasVindas')) fecharBoasVindas(); render(); }).then(function(){
     render();
     if(nuvem.st === 'ok') toast('Conectado. Sincronização ligada.');
   }).catch(function(err){
@@ -5737,8 +5729,48 @@ document.addEventListener('submit', function(e){
   });
 });
 
+/* --- Boas-vindas: primeira abertura num aparelho sem login --- */
+const LS_BOAS_VINDAS = 'gestor.boasVindas';
+const BV_POR_BAIXO = ['#app', '#bottombar', '#fab'];
+// atalhos de teclado do app (N, /, 1–4, E) não agem por baixo da tela
+window.addEventListener('keydown', function(e){
+  const bv = $('#boasVindas');
+  if(bv && !bv.classList.contains('saindo') && !bv.contains(e.target)) e.stopImmediatePropagation();
+}, true);
+function mostrarBoasVindas(){
+  if($('#boasVindas')) return;
+  const el = document.createElement('div');
+  el.className = 'bv'; el.id = 'boasVindas';
+  el.setAttribute('role', 'dialog'); el.setAttribute('aria-modal', 'true'); el.setAttribute('aria-labelledby', 'bvTitulo');
+  el.innerHTML = '<div class="bv-in">' +
+    '<img class="bv-logo" src="icons/icon-192.png" alt="" width="64" height="64">' +
+    '<div><h1 id="bvTitulo">Boas-vindas ao Gestor</h1>' +
+      '<p class="bv-sub" style="margin-top:8px">Projetos, tarefas e lembretes num só lugar. Entre com sua conta para ver os mesmos dados no celular e no computador.</p></div>' +
+    '<form class="bv-card" data-nuvem-login autocomplete="on" novalidate>' +
+      '<div class="field"><label for="bvEmail">E-mail</label><input class="inp" id="bvEmail" type="email" name="email" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false"></div>' +
+      '<div class="field"><label for="bvSenha">Senha</label><input class="inp" id="bvSenha" type="password" name="password" autocomplete="current-password"></div>' +
+      '<button type="submit" class="btn prim blk">' + ic('cloud',15) + 'Entrar</button>' +
+    '</form>' +
+    '<button type="button" class="bv-sem" data-bv="sem">Continuar sem login</button>' +
+    '<p class="bv-nota">Sem login, os dados ficam só neste aparelho. Dá para entrar depois em Configurações.</p>' +
+  '</div>';
+  document.body.appendChild(el);
+  BV_POR_BAIXO.forEach(s => $(s).setAttribute('inert', ''));   // teclado e leitores de tela não alcançam o app por baixo
+  $('[data-bv="sem"]', el).addEventListener('click', function(){ fecharBoasVindas(); toast('Tudo certo. Seus dados ficam neste aparelho.'); });
+  if(!ehToque()) setTimeout(() => $('#bvEmail').focus(), 60);
+}
+function fecharBoasVindas(){
+  try{ localStorage.setItem(LS_BOAS_VINDAS, 'visto'); }catch(e){}
+  const el = $('#boasVindas'); if(!el) return;
+  if(el.contains(document.activeElement)) document.activeElement.blur();
+  BV_POR_BAIXO.forEach(s => $(s).removeAttribute('inert'));
+  el.classList.add('saindo');
+  setTimeout(() => el.remove(), 200);
+}
+
 function nuvemIniciar(){
   nuvem.pronto = true;
+  if(!nuvemSessao() && !lerLS(LS_BOAS_VINDAS)) mostrarBoasVindas();
   document.addEventListener('visibilitychange', function(){
     if(!nuvemSessao()) return;
     if(document.visibilityState === 'visible') nuvemSincronizar();
