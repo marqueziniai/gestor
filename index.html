@@ -480,19 +480,6 @@ html.quebra .sb-item{align-items:center;line-height:1.3;padding-top:9px;padding-
   .empty .acts .btn{width:100%;height:48px;justify-content:center;font-size:15px}
 }
 
-/* ---- Modo edição ---- */
-.edit-banner{display:flex;align-items:center;gap:8px 12px;flex-wrap:wrap;background:var(--accent-soft);color:var(--accent);border-radius:var(--r-md);padding:8px 12px;font-size:13px;font-weight:600;margin:0 0 10px}
-.edit-banner .sp{flex:1}
-.lbar{display:flex;flex-wrap:wrap;gap:6px;align-items:center;padding:8px 10px;border:1.5px dashed color-mix(in srgb,var(--accent) 55%,transparent);border-radius:var(--r-md);margin-bottom:12px;background:var(--surface)}
-.lbar-t{font-size:11.5px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:.05em;margin-right:4px;white-space:nowrap}
-@media (max-width:767px){.lbar{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin}.lchip{flex:none;white-space:nowrap}}
-.edit-banner>span:first-of-type{flex:1 1 220px}
-.edit-banner>svg{flex:none}
-.lchip{display:inline-flex;align-items:center;gap:2px;height:32px;padding:0 4px 0 2px;border-radius:var(--r-sm);border:1px solid var(--border);background:var(--surface-2);font-size:12.5px;font-weight:600;color:var(--text)}
-.lchip .nm{padding:0 4px;border-radius:5px;height:26px;display:inline-flex;align-items:center}
-@media (hover:hover){.lchip button.nm:hover{background:var(--surface-3)}}
-.lchip.add{border-style:dashed;background:transparent;color:var(--accent);padding:0 10px;gap:5px}
-.lchip.trav .nm{color:var(--text-2)}
 .hdl{cursor:grab;color:var(--text-3);display:grid;place-items:center;width:24px;height:28px;border-radius:6px;touch-action:none;flex:none}
 @media (hover:hover){.hdl:hover{background:var(--surface-3);color:var(--text)}}
 .sorting{opacity:.35}
@@ -508,6 +495,9 @@ html.quebra .sb-item{align-items:center;line-height:1.3;padding-top:9px;padding-
 .seg button{white-space:nowrap}
 .etabs{max-width:100%;overflow-x:auto}
 .erow.off{opacity:.6}
+.cat-sem-dot{width:14px;height:14px;border-radius:50%;background:var(--text-3);margin:0 9px;flex:none}
+.cat-sem-nm{flex:1;min-width:80px;padding:5px 9px;font-size:14px;color:var(--text-2)}
+.btn.icon-only{padding-left:9px;padding-right:9px}
 .etabs{margin-bottom:14px}
 .egrid{display:grid;gap:16px}
 @media (min-width:1024px){.egrid.tres{grid-template-columns:repeat(3,1fr)}.egrid.dois{grid-template-columns:repeat(2,1fr)}}
@@ -721,7 +711,6 @@ mark{background:color-mix(in srgb,var(--caution) 32%,transparent);color:inherit;
   .fc{min-height:32px;padding:4px 10px}
   .dp-d{height:42px}
   .hdl{width:40px;height:44px}
-  .lchip{height:40px}
   .kcol-add{min-height:44px}
   .cor-in{width:36px;height:36px}
   .kcol-h .nm-in{height:40px}
@@ -1138,9 +1127,9 @@ function prefsPadrao(){
     versao:4, tema:'auto', sidebarCompacta:false, sidebarExp:false, listaQuebra:true, larguras:{}, dicas:{swipe:false},
     entrada:{aba:'triagem', tipos:[], categorias:[], ordem:'criacao-desc', agrupar:'nenhum', colapsados:[]},
     hoje:{visao:'lista', periodo:'hoje-vencidos', custIni:'', custFim:'', datas:['lemb','entrega'], tipos:['projeto','tarefa','lemb'], categorias:[], ordem:'data-asc', manual:[], colapsados:[]},
-    projetos:{visao:'kanban', agrupar:'status', statusF:[], categorias:[], dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[]},
-    tarefas:{visao:'lista', agrupar:'status', vinculo:'todas', lembF:'todas', statusF:[], categorias:[], projetosF:[], dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[]},
-    projeto:{visao:'kanban', ordem:'entrega-asc', manual:[], colapsados:[]}
+    projetos:{visao:'kanban', agrupar:'status', statusF:[], categorias:[], dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
+    tarefas:{visao:'lista', agrupar:'status', vinculo:'todas', lembF:'todas', statusF:[], categorias:[], projetosF:[], dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
+    projeto:{visao:'kanban', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false}
   };
 }
 function mescla(alvo, padrao){
@@ -1162,7 +1151,7 @@ const state = {
   ui:{
     rota:{view:'hoje', id:null, item:null, q:{}},
     busca:'', buscaConcl:'', feedFiltro:'tudo', addCol:null, editandoCmt:null, rascunhos:{},
-    recemConcluidos:new Set(), modoEdicao:false, estruturaAba:'status', maisCampos:false, focar:null,
+    recemConcluidos:new Set(), maisFerr:false, estruturaAba:'status', maisCampos:false, focar:null,
     fixadosHoje:{},          // itens arrastados em Hoje nesta visita: id → campo de data alterado
     expandidos:new Set(),    // projetos com as tarefas abertas abaixo do card/linha
     animarChk:null           // id do item recém-concluído (anima o círculo depois do render)
@@ -1575,8 +1564,10 @@ function filtraBusca(arr){
   if(q.length < 2) return arr;
   return arr.filter(i => normaliza(i.titulo).indexOf(q) !== -1 || normaliza(i.descricao).indexOf(q) !== -1);
 }
-/** Concluídos saem das listas e vão para "Concluídos"; o que acabou de ser concluído fica até sair da tela (dá para desfazer). */
-function filtraConcluidos(arr){
+/** Concluídos saem das listas e vão para "Concluídos"; o que acabou de ser concluído fica até sair da tela (dá para desfazer).
+    Com "Ver concluídos" ligado na seção, eles continuam na lista. */
+function filtraConcluidos(arr, sec){
+  if(sec && state.prefs[sec] && state.prefs[sec].concluidos) return arr;
   return arr.filter(i => !concluido(i) || state.ui.recemConcluidos.has(i.id));
 }
 /** Ordem da seção, com a lista personalizada quando a ordem é "manual". */
@@ -2362,6 +2353,7 @@ function aplicarOrdem(chave, ids){
   const reordena = (lista, pegaId) => ids.map(id => lista.find(x => pegaId(x) === id)).filter(Boolean).concat(lista.filter(x => ids.indexOf(pegaId(x)) === -1));
   if(chave.indexOf('status:') === 0){ const t = chave.split(':')[1]; estr().status[t] = reordena(estr().status[t], s => s.id); }
   else if(chave === 'campos'){ estr().campos = reordena(campos(), c => c.id); }
+  else if(chave === 'categorias'){ state.dados.categorias = reordena(categorias(), c => c.id); }
   else if(chave.indexOf('layout:') === 0 || chave.indexOf('layoutfull:') === 0){ const v = chave.split(':')[1]; estr().layouts[v] = reordena(estr().layouts[v], e => e.id); }
   persistir(); render();
 }
@@ -2369,6 +2361,7 @@ function moverNaOrdem(chave, id, delta){
   let lista;
   if(chave.indexOf('status:') === 0) lista = estr().status[chave.split(':')[1]].map(s => s.id);
   else if(chave === 'campos') lista = campos().map(c => c.id);
+  else if(chave === 'categorias') lista = categorias().map(c => c.id);
   else if(chave.indexOf('layoutfull:') === 0) lista = layout(chave.split(':')[1]).map(e => e.id);
   else lista = layoutVisivel(chave.split(':')[1]);
   const i = lista.indexOf(id), j = i + delta;
@@ -3325,7 +3318,6 @@ function botaoAdicionar(sec, col, cls){
 function listaHTML(sec, conteudo, ctx){
   ctx = ctx || {};
   const quebra = state.prefs.listaQuebra;
-  const barra = state.ui.modoEdicao ? barraLayout('lista') : '';
   const grupos = conteudo.grupos ? conteudo.grupos.filter(g => g.itens.length || g.sempre || (ctx.podeAdicionar && state.ui.addCol && state.ui.addCol.sec === sec && state.ui.addCol.col === g.chave)) : null;
   const addAberto = col => state.ui.addCol && state.ui.addCol.sec === sec && state.ui.addCol.col === col;
   const rodapeAdd = (col, nome) => addAberto(col) ? '<div class="add-row">' + rascunhoHTML(sec, col, nome) + '</div>'
@@ -3352,7 +3344,7 @@ function listaHTML(sec, conteudo, ctx){
     const card = it => cardHTML(it, {layout:'lista', motivo: ctx.motivoFn ? ctx.motivoFn(it) : null, rodape:ctx.rodape});
     const bloco = (its, col, nome) => (its.length ? '<div class="cards">' + its.map(card).join('') + '</div>' : (addAberto(col) ? '' : '<p class="muted" style="padding:4px 6px">' + esc(ctx.vazioGrupo || 'Nada aqui') + '</p>')) + rodapeAdd(col, nome);
     const corpo = grupos ? grupos.map(g => grupo(sec, g.chave, g.nome, bloco(g.itens, g.chave, g.nome), g.itens.length)).join('') : bloco(conteudo.itens, '__todos', 'lista');
-    return barra + '<div class="lista-m' + (quebra ? ' quebra' : '') + '">' + corpo + '</div>';
+    return '<div class="lista-m' + (quebra ? ' quebra' : '') + '">' + corpo + '</div>';
   }
   const gtc = larg.map(l => l[1]).concat([acoesW + 'px']).join(' ');
   const p = state.prefs[sec] || {};
@@ -3384,7 +3376,7 @@ function listaHTML(sec, conteudo, ctx){
   };
   const bloco = (its, col, nome) => (its.length ? its.map(it => linha(it)).join('') : (addAberto(col) ? '' : '<p class="muted" style="padding:10px 12px">' + esc(ctx.vazioGrupo || 'Nada aqui') + '</p>')) + (rodapeAdd(col, nome) ? '<div style="padding:0 12px">' + rodapeAdd(col, nome) + '</div>' : '');
   const corpo = grupos ? grupos.map(g => grupo(sec, g.chave, g.nome, bloco(g.itens, g.chave, g.nome), g.itens.length)).join('') : bloco(conteudo.itens, '__todos', 'lista');
-  return barra + '<div class="lista-wrap"><div class="lista' + (quebra ? ' quebra' : '') + '" style="--minw:' + minw + 'px;--gtc:' + gtc + '">' + head + corpo + '</div></div>';
+  return '<div class="lista-wrap"><div class="lista' + (quebra ? ' quebra' : '') + '" style="--minw:' + minw + 'px;--gtc:' + gtc + '">' + head + corpo + '</div></div>';
 }
 function grupo(sec, chave, titulo, corpo, n){
   const col = ((state.prefs[sec] && state.prefs[sec].colapsados) || []).indexOf(chave) !== -1;
@@ -3397,24 +3389,9 @@ function grupo(sec, chave, titulo, corpo, n){
  * Kanban. cols: [{chave, nome, cor, itens}]. ctx: {dropKind, statusTipo (colunas = status editáveis), motivoFn, semAdicionar, podeAdicionar(chave)}
  */
 function kanbanHTML(sec, cols, ctx){
-  const edit = state.ui.modoEdicao && ctx.statusTipo;
-  let topo = '';
-  if(state.ui.modoEdicao){
-    topo = barraLayout('kanban') + (ctx.statusTipo ? '' : '<p class="hint" style="margin:-4px 0 10px">' + ic('info',13) + '<span>As colunas desta visão vêm do agrupamento escolhido. Para editar colunas de status, agrupe por Status.</span></p>');
-  }
   const colunas = cols.map(function(c){
     const cards = c.itens.map(it => cardHTML(it, {layout:'kanban', arrastavel:true, motivo: ctx.motivoFn ? ctx.motivoFn(it) : null})).join('');
-    const s = edit ? statusPorId(ctx.statusTipo, c.chave) : null;
-    const lst = 'status:' + ctx.statusTipo;
-    const head = s
-      ? '<div class="kcol-h"><span class="hdl" data-sort-handle title="Arrastar para reordenar">' + ic('grip',16) + '</span>' +
-        '<input type="color" class="cor-in" value="' + esc(s.cor) + '" data-act="status-cor" data-tipo="' + ctx.statusTipo + '" data-sid="' + s.id + '" aria-label="Cor de ' + esc(s.nome) + '">' +
-        '<input class="nm-in" value="' + esc(s.nome) + '" data-act="status-nome" data-tipo="' + ctx.statusTipo + '" data-sid="' + s.id + '" aria-label="Nome do status ' + esc(s.nome) + '">' +
-        (s.final ? '<span class="badge ok" data-tip="Status de conclusão (renomeável, não pode ser excluído)" data-tip-sempre="1" tabindex="0" aria-label="Status de conclusão">' + ic('flag',11) + '</span>'
-                 : '<button type="button" class="icon-btn sm" data-act="status-excluir" data-tipo="' + ctx.statusTipo + '" data-sid="' + s.id + '" aria-label="Excluir status ' + esc(s.nome) + '">' + ic('trash',15) + '</button>') +
-        '<button type="button" class="icon-btn sm" data-act="mover-ordem" data-lista="' + lst + '" data-k="' + s.id + '" data-d="-1" aria-label="Mover ' + esc(s.nome) + ' para a esquerda">' + ic('chevL',15) + '</button>' +
-        '<button type="button" class="icon-btn sm" data-act="mover-ordem" data-lista="' + lst + '" data-k="' + s.id + '" data-d="1" aria-label="Mover ' + esc(s.nome) + ' para a direita">' + ic('chevR',15) + '</button></div>'
-      : '<div class="kcol-h">' + (c.cor ? '<span class="cdot" style="background:' + esc(c.cor) + '"></span>' : '') + '<span class="nm">' + esc(c.nome) + '</span>' +
+    const head = '<div class="kcol-h">' + (c.cor ? '<span class="cdot" style="background:' + esc(c.cor) + '"></span>' : '') + '<span class="nm">' + esc(c.nome) + '</span>' +
         (c.foraPeriodo ? '<span class="fora-periodo" title="Faixa fora do período do filtro: só aparecem aqui os cards que você acabou de mover">fora do período</span>' : '') +
         '<span class="cnt">' + c.itens.length + '</span></div>';
     const addAberto = state.ui.addCol && state.ui.addCol.sec === sec && state.ui.addCol.col === c.chave;
@@ -3422,34 +3399,22 @@ function kanbanHTML(sec, cols, ctx){
     // "+ Adicionar" abre um card-rascunho na coluna, já mostrando o que o item vai herdar
     const rasc = addAberto ? rascunhoHTML(sec, c.chave, c.nome) : '';
     const pe = !addAberto && pode ? botaoAdicionar(sec, c.chave) : '';
-    // coluna de conclusão: concluídos saem do quadro; o link leva ao arquivo de Concluídos
-    const nConc = ctx.statusTipo && !edit && c.chave === statusFinal(ctx.statusTipo).id ? contaConcluidos(sec) : 0;
-    const linkConc = nConc ? '<button type="button" class="kcol-conc" data-act="ver-concluidos" data-sec="' + sec + '">' + ic('checkSq', 14) + 'Ver ' + nConc + ' concluído' + (nConc > 1 ? 's' : '') + '</button>' : '';
-    return '<div class="kcol" data-drop="1" data-drop-kind="' + esc(ctx.dropKind || '') + '" data-drop-col="' + esc(c.chave) + '"' + (s ? ' data-sort-key="' + s.id + '"' : '') + ' role="group" aria-label="' + esc(c.nome) + '">' +
+    // coluna de conclusão: concluídos ficam ocultos; o link liga o filtro "Ver concluídos" desta seção
+    const temFiltro = state.prefs[sec] && 'concluidos' in state.prefs[sec];
+    const nConc = temFiltro && ctx.statusTipo && c.chave === statusFinal(ctx.statusTipo).id ? contaConcluidos(sec) : 0;
+    const linkConc = nConc ? '<button type="button" class="kcol-conc" data-act="tog-concl" data-sec="' + sec + '" aria-pressed="' + state.prefs[sec].concluidos + '">' + ic('checkSq', 14) +
+      (state.prefs[sec].concluidos ? 'Ocultar concluídos' : 'Ver ' + nConc + ' concluído' + (nConc > 1 ? 's' : '')) + '</button>' : '';
+    return '<div class="kcol" data-drop="1" data-drop-kind="' + esc(ctx.dropKind || '') + '" data-drop-col="' + esc(c.chave) + '" role="group" aria-label="' + esc(c.nome) + '">' +
       head + '<div class="kcol-body">' + (cards || (rasc || linkConc ? '' : '<p class="muted" style="padding:6px 4px 10px">Nada aqui</p>')) + rasc + linkConc + '</div>' + (pe ? '<div class="kcol-foot">' + pe + '</div>' : '') + '</div>';
   }).join('');
-  const novo = edit ? '<div class="kcol novo"><label class="flabel" for="novoSt">Nova coluna de status</label><input class="inp-inline" id="novoSt" data-act="status-add-in" data-tipo="' + ctx.statusTipo + '" placeholder="Nome e Enter"><p class="hint">Entra antes do status de conclusão.</p></div>' : '';
   // celular: abas fixas com nome e contagem de cada coluna (tocar leva à coluna); os pontos reforçam a posição
   const abas = '<div class="ktabs" role="tablist" aria-label="Colunas">' + cols.map((c, i) => '<button type="button" role="tab" data-act="ktab" data-i="' + i + '" aria-current="' + (i === 0) + '">' +
     (c.cor ? '<span class="cdot" style="background:' + esc(c.cor) + '"></span>' : '') + esc(c.nome) + '<span class="cnt">' + c.itens.length + '</span></button>').join('') + '</div>';
   const dots = cols.map((c, i) => '<i class="' + (i === 0 ? 'on' : '') + '"></i>').join('');
-  return topo + abas + '<div class="kdots" aria-hidden="true">' + dots + '</div>' +
-    '<div class="kanban"' + (edit ? ' data-sort-list="status:' + ctx.statusTipo + '" data-sort-axis="x"' : '') + '>' + colunas + novo + '</div>';
+  return abas + '<div class="kdots" aria-hidden="true">' + dots + '</div>' +
+    '<div class="kanban">' + colunas + '</div>';
 }
 
-/* --- Modo edição: barra de campos/colunas (arrastar para reordenar) --- */
-function barraLayout(v){
-  const titulos = {card:'Campos do card', kanban:'Campos no card do kanban', lista:'Colunas da lista'};
-  const chips = layoutVisivel(v).map(function(cid){
-    const def = campoDef(cid), nome = def.nome, trav = cid === 'titulo';
-    return '<span class="lchip' + (trav ? ' trav' : '') + '" data-sort-key="' + cid + '">' +
-      '<span class="hdl" data-sort-handle title="Arrastar para reordenar">' + ic('grip',14) + '</span>' +
-      (!def.exibicao ? '<button type="button" class="nm" data-act="campo-renomear-pop" data-k="' + cid + '" aria-label="Renomear ' + esc(nome) + '">' + esc(nome) + '</button>' : '<span class="nm">' + esc(nome) + '</span>') +
-      (trav ? '' : '<button type="button" class="icon-btn sm" data-act="layout-ocultar" data-v="' + v + '" data-k="' + cid + '" aria-label="Ocultar ' + esc(nome) + '">' + ic('x',13) + '</button>') + '</span>';
-  }).join('');
-  return '<div class="lbar" data-sort-list="layout:' + v + '" data-sort-axis="xy"><span class="lbar-t">' + titulos[v] + '</span>' + chips +
-    '<button type="button" class="lchip add" data-act="layout-add" data-v="' + v + '">' + ic('plus',13) + (v === 'lista' ? 'Coluna' : 'Campo') + '</button></div>';
-}
 function corpoLayout(v){
   const L = layout(v);
   return '<p class="hint" style="margin:0 0 10px">' + ic('info',13) + '<span>Arraste ' + '⠿' + ' ou use as setas para ordenar. O título é sempre visível' + (v === 'card' ? ' e fica no topo do card' : '') + '. Campos que não se aplicam ao tipo do item (ex.: Progresso em tarefas) somem sozinhos.</span></p>' +
@@ -3518,7 +3483,12 @@ function renderSidebar(){
     const on = catAtivas.length === 1 && catAtivas[0] === cat.id;
     return '<button type="button" class="sb-item" data-act="filtrar-cat" data-cat="' + cat.id + '" aria-pressed="' + on + '" data-tip="Filtrar: ' + esc(cat.nome) + '" aria-label="Filtrar pela categoria ' + esc(cat.nome) + '">' +
       '<span class="sb-dot" style="background:' + esc(cat.cor) + '"></span><span class="lbl">' + esc(cat.nome) + '</span><span class="sb-count">' + n + '</span></button>';
-  }).join('');
+  }).join('') + (function(){
+    const n = items().filter(i => !i.categoriaId && ativo(i) && i.tipo && !concluido(i)).length;
+    const on = catAtivas.length === 1 && catAtivas[0] === 'sem';
+    return '<button type="button" class="sb-item" data-act="filtrar-cat" data-cat="sem" aria-pressed="' + on + '" data-tip="Filtrar: Sem categoria" aria-label="Filtrar pelos itens sem categoria">' +
+      '<span class="sb-dot" style="background:var(--text-3)"></span><span class="lbl">Sem categoria</span><span class="sb-count">' + n + '</span></button>';
+  })();
   const projs = projetos().filter(p => p.secao === 'projetos' && !concluido(p)).map(function(p){
     const pr = progresso(p), parado = semProxima(p);
     return '<button type="button" class="sb-item" data-act="abrir-projeto" data-id="' + p.id + '"' + (r.view === 'projetos' && r.id === p.id ? ' aria-current="page"' : '') + ' data-tip="' + esc(p.titulo) + (parado ? ' · sem próxima ação' : '') + '" aria-label="Projeto ' + esc(p.titulo) + (parado ? ', sem próxima ação' : '') + '">' +
@@ -3541,7 +3511,7 @@ function renderSidebar(){
       (projs ? '<div class="sb-sec">Projetos ativos</div><div class="sb-sec-line"></div><nav aria-label="Projetos ativos">' + projs + '</nav>' : '') +
     '</div>' +
     '<div class="sb-foot">' +
-      '<button type="button" class="sb-item" data-act="nav" data-view="estrutura"' + (r.view === 'estrutura' ? ' aria-current="page"' : '') + ' data-tip="Estrutura (modo edição)" aria-label="Estrutura">' + ic('structure',18) + '<span class="lbl">Estrutura</span></button>' +
+      '<button type="button" class="sb-item" data-act="nav" data-view="estrutura"' + (r.view === 'estrutura' ? ' aria-current="page"' : '') + ' data-tip="Estrutura" aria-label="Estrutura">' + ic('structure',18) + '<span class="lbl">Estrutura</span></button>' +
       '<button type="button" class="sb-item" data-act="nav" data-view="config"' + (r.view === 'config' ? ' aria-current="page"' : '') + ' data-tip="Configurações" aria-label="Configurações">' + ic('gear',18) + '<span class="lbl">Configurações</span></button>' +
       (nuvemSessao()
         ? '<button type="button" class="sb-item" data-act="nuvem-sair" data-tip="Sair da conta" aria-label="Sair da conta">' + ic('logout',18) + '<span class="lbl">Sair</span></button>'
@@ -3607,16 +3577,17 @@ function btnVisao(sec){
 }
 /** O que a barra de ferramentas de cada seção oferece (vale também para o sheet "Filtros" do celular). */
 function optsFerramentas(sec){
-  if(sec === 'projeto') return {filtros:false, concluidos:true};
+  if(sec === 'projeto') return {filtros:false};   // "Ver concluídos" fica ao lado de "Tarefas do projeto"
   if(sec === 'entrada') return state.prefs.entrada.aba === 'futuro' ? {visao:false, agruparFuturo:true} : {visao:false, filtros:false, ordem:false};
   if(sec === 'projetos') return {agrupar: state.prefs.projetos.visao === 'lista', concluidos:true};
   if(sec === 'tarefas') return {agrupar:true, concluidos:true};
   return {};
 }
 const contaFiltrosSec = sec => sec === 'hoje' ? contaFiltrosHoje() : contaFiltros(sec);
+/** Filtro: mostra os concluídos na própria seção (o arquivo completo continua em Concluídos). */
 function btnVerConcluidos(sec, compacto){
-  const n = contaConcluidos(sec);
-  return '<button type="button" class="btn" data-act="ver-concluidos" data-sec="' + sec + '" aria-label="Ver concluídos' + (n ? ' (' + n + ')' : '') + '" data-tip="Ver concluídos" data-tip-sempre="1">' + ic('checkSq',15) +
+  const n = contaConcluidos(sec), on = !!state.prefs[sec].concluidos;
+  return '<button type="button" class="btn' + (compacto ? '' : ' sm') + (on ? ' on' : '') + '" data-act="tog-concl" data-sec="' + sec + '" aria-pressed="' + on + '" aria-label="Ver concluídos' + (n ? ' (' + n + ')' : '') + '" data-tip="' + (on ? 'Ocultar concluídos' : 'Ver concluídos') + '" data-tip-sempre="1">' + ic('checkSq',15) +
     (compacto ? (n ? n : '') : 'Ver concluídos' + (n ? ' (' + n + ')' : '')) + '</button>';
 }
 function ferramentas(sec){
@@ -3635,17 +3606,21 @@ function ferramentas(sec){
   if(o.ordem !== false) h += '<button type="button" class="btn" data-act="sheet-ordem" data-sec="' + sec + '">' + ic('sort',15) + 'Ordenar' + (state.prefs[sec].ordem === 'manual' ? ': personalizada' : '') + '</button>';
   if(o.agrupar && !foco) h += '<button type="button" class="btn" data-act="sheet-agrupar" data-sec="' + sec + '">' + ic('layers',15) + 'Agrupar: ' + esc(rotuloAgrupar(sec)) + '</button>';
   if(o.agruparFuturo) h += '<button type="button" class="btn' + (state.prefs.entrada.agrupar === 'categoria' ? ' on' : '') + '" data-act="toggle-agrup-futuro" aria-pressed="' + (state.prefs.entrada.agrupar === 'categoria') + '">' + ic('layers',15) + 'Agrupar por categoria</button>';
-  if(!foco) h += '<button type="button" class="btn" data-act="sheet-layout" data-v="' + visao + '">' + ic('sliders',15) + (visao === 'lista' ? 'Colunas' : 'Campos') + '</button>';
-  h += '<button type="button" class="btn' + (state.prefs.listaQuebra ? ' on' : '') + '" data-act="tog-quebra" aria-pressed="' + state.prefs.listaQuebra + '">' + ic('wrap',15) + 'Quebrar linhas</button>';
-  if(!foco) h += '<button type="button" class="btn' + (state.ui.modoEdicao ? ' on' : '') + '" data-act="toggle-edicao" aria-pressed="' + state.ui.modoEdicao + '">' + ic('edit',15) + 'Modo edição</button>';
   if(o.concluidos) h += btnVerConcluidos(sec);
+  // exibição (campos/colunas e quebra de linha) fica atrás da engrenagem
+  const aberto = state.ui.maisFerr;
+  h += '<button type="button" class="btn icon-only' + (aberto ? ' on' : '') + '" data-act="tog-mais-ferr" aria-expanded="' + aberto + '" aria-label="Mais opções de exibição" data-tip="' + (aberto ? 'Menos opções' : 'Mais opções') + '" data-tip-sempre="1">' + ic('gear',16) + '</button>';
+  if(aberto){
+    if(!foco) h += '<button type="button" class="btn" data-act="sheet-layout" data-v="' + visao + '">' + ic('sliders',15) + (visao === 'lista' ? 'Colunas' : 'Campos') + '</button>';
+    h += '<button type="button" class="btn' + (state.prefs.listaQuebra ? ' on' : '') + '" data-act="tog-quebra" aria-pressed="' + state.prefs.listaQuebra + '">' + ic('wrap',15) + 'Quebrar linhas</button>';
+  }
   return h;
 }
 /** Sheet "Filtros" do celular: filtros, ordem, agrupamento, exibição e concluídos num lugar só. */
 function corpoOpcoes(sec){
   const o = optsFerramentas(sec), p = state.prefs[sec];
   const visao = o.visao === false ? 'lista' : p.visao, foco = visao === 'foco';
-  const sw = (rot, sub, act, on) => '<div class="switch"><span class="tx">' + rot + (sub ? '<small>' + sub + '</small>' : '') + '</span><button type="button" class="toggle' + (on ? ' on' : '') + '" data-act="' + act + '" role="switch" aria-checked="' + on + '" aria-label="' + rot + '"></button></div>';
+  const sw = (rot, sub, act, on, attrs) => '<div class="switch"><span class="tx">' + rot + (sub ? '<small>' + sub + '</small>' : '') + '</span><button type="button" class="toggle' + (on ? ' on' : '') + '" data-act="' + act + '"' + (attrs || '') + ' role="switch" aria-checked="' + on + '" aria-label="' + rot + '"></button></div>';
   let h = '';
   if(o.filtros !== false) h += corpoFiltros(sec);
   if(o.ordem !== false) h += '<div class="sect-t">Ordenar por</div><div class="opt-list" role="radiogroup" aria-label="Ordenar por">' +
@@ -3655,9 +3630,8 @@ function corpoOpcoes(sec){
   h += '<div class="sect-t">Exibição</div>';
   if(o.agruparFuturo) h += sw('Agrupar por categoria', '', 'toggle-agrup-futuro', p.agrupar === 'categoria');
   h += sw('Quebrar linhas', 'Padrão: nada fica cortado', 'tog-quebra', state.prefs.listaQuebra);
-  if(!foco) h += sw('Modo edição', 'Reordenar e renomear campos e colunas', 'toggle-edicao', state.ui.modoEdicao) +
-    '<button type="button" class="btn blk" data-act="sheet-layout" data-v="' + visao + '" style="margin-top:6px">' + ic('sliders',15) + (visao === 'lista' ? 'Colunas da lista' : 'Campos do card') + '</button>';
-  if(o.concluidos) h += '<div class="sect-t">Concluídos</div><button type="button" class="btn blk" data-act="ver-concluidos" data-sec="' + sec + '">' + ic('checkSq',15) + 'Ver concluídos (' + contaConcluidos(sec) + ')</button>';
+  if(!foco) h += '<button type="button" class="btn blk" data-act="sheet-layout" data-v="' + visao + '" style="margin-top:6px">' + ic('sliders',15) + (visao === 'lista' ? 'Colunas da lista' : 'Campos do card') + '</button>';
+  if(o.concluidos) h += '<div class="sect-t">Concluídos</div>' + sw('Ver concluídos (' + contaConcluidos(sec) + ')', 'Mostra os concluídos aqui mesmo, junto com os abertos', 'tog-concl', !!p.concluidos, ' data-sec="' + sec + '"');
   return h;
 }
 function sheetOpcoes(sec){
@@ -3709,9 +3683,6 @@ function renderTopbar(){
   }else if(r.view === 'revisao'){
     sub = 'GTD: o que precisa de atenção';
   }
-  const banner = state.ui.modoEdicao && ['config','estrutura'].indexOf(r.view) === -1
-    ? '<div class="edit-banner" role="status">' + ic('edit',15) + '<span>Modo edição: arraste ' + ic('grip',13).replace('<svg ','<svg style="display:inline;vertical-align:-2px" ') + ' para reordenar, clique num nome para renomear.</span><span class="sp"></span>' +
-      '<button type="button" class="btn sm" data-act="nav" data-view="estrutura">Estrutura completa</button><button type="button" class="btn sm prim" data-act="toggle-edicao">Concluir edição</button></div>' : '';
   $('#topbar').innerHTML =
     '<div class="tb-main">' + voltar +
       '<div style="min-width:0"><h1 class="tb-title">' + esc(titulo) + (sub ? '<span class="tb-sub">' + esc(sub) + '</span>' : '') + '</h1></div>' +
@@ -3724,7 +3695,7 @@ function renderTopbar(){
     '</div>' +
     // ferramentas e chips recolhem juntos ao rolar para baixo no celular
     '<div class="tb-extra"><div>' + (tools ? '<div class="tb-tools">' + tools + '</div>' : '<div style="height:10px"></div>') +
-    (chips ? '<div class="tb-chips">' + chips + '</div>' : '') + '</div></div>' + banner;
+    (chips ? '<div class="tb-chips">' + chips + '</div>' : '') + '</div></div>';
 }
 
 /* =========================================================================
@@ -3914,7 +3885,7 @@ function viewEntrada(){
     '<div class="swipe-wrap"><div class="swipe-bg" aria-hidden="true"><span>' + ic('split',14) + 'Triagem</span><span>Futuro' + ic('archive',14) + '</span></div>' +
     '<div class="swipe-el' + (espiar && i === 0 ? ' espiar' : '') + '" data-swipe-id="' + it.id + '">' + cardHTML(it, {layout:'lista', topo:'<div class="c-meta">' + ic('clock',12) + 'Capturado ' + esc(tempoRelativo(it.criadoEm)) + '</div>', rodape:rodapeTriagem}) + '</div></div>').join('');
   if(espiar){ state.prefs.dicas.swipe = true; persistirPrefs(); }
-  return (state.ui.modoEdicao ? barraLayout('lista') : '') +
+  return 
     '<p class="hint" style="margin:0 0 10px">' + ic('info',13) + '<span>' + (toque ? 'Deslize o card para a direita para fazer a triagem ou para a esquerda para classificar no Futuro — ou use os botões do card. Dá para desfazer.' : 'Transforme cada item em tarefa ou projeto, classifique no Futuro ou descarte (fica ' + DIAS_LIXEIRA + ' dias na lixeira).') + '</span></p>' +
     '<div class="cards lista-m">' + cards + '</div>';
 }
@@ -3968,9 +3939,8 @@ function viewHoje(){
 /* ---------- PROJETOS (somente projetos) ---------- */
 function viewProjetos(){
   const p = state.prefs.projetos;
-  const lista = ordenar(filtraConcluidos(filtraBusca(aplicaFiltros(items().filter(i => i.tipo === 'projeto' && i.secao === 'projetos'), 'projetos'))), p.ordem, ctxOrdem('projetos'));
-  const editandoKanban = state.ui.modoEdicao && p.visao === 'kanban';
-  if(!lista.length && !editandoKanban){
+  const lista = ordenar(filtraConcluidos(filtraBusca(aplicaFiltros(items().filter(i => i.tipo === 'projeto' && i.secao === 'projetos'), 'projetos')), 'projetos'), p.ordem, ctxOrdem('projetos'));
+  if(!lista.length){
     if(contaFiltros('projetos') || state.ui.busca.trim().length >= 2) return vazio('filter', 'Nenhum projeto com esses filtros', '', (contaFiltros('projetos') ? btnLimparFiltros('projetos') : '') + (state.ui.busca ? btnLimparBusca() : ''));
     return vazio('folder', 'Nenhum projeto por aqui', 'Projetos reúnem tarefas com um objetivo comum.', '<button type="button" class="btn prim" data-act="novo-projeto">' + ic('plus',15) + 'Criar projeto</button>');
   }
@@ -4007,18 +3977,18 @@ function viewProjeto(id){
   const p = getItem(id);
   if(!p || p.tipo !== 'projeto') return vazio('alert', 'Projeto não encontrado', 'Ele pode ter sido excluído ou convertido em tarefa.', '<button type="button" class="btn" data-act="nav" data-view="projetos">Voltar para Projetos</button>');
   const pp = state.prefs.projeto, fechado = concluido(p);
-  const subs = ordenar(filtraConcluidos(filtraBusca(subtarefas(id))), pp.ordem, ctxOrdem('projeto'));
+  const subs = ordenar(filtraConcluidos(filtraBusca(subtarefas(id)), 'projeto'), pp.ordem, ctxOrdem('projeto'));
   const noFuturo = subtarefasFuturo(id);
   const cab = '<section class="card" style="padding:14px 16px;margin-bottom:18px;-webkit-user-select:auto;user-select:auto">' +
     '<div class="row-between" style="align-items:center;margin-bottom:4px"><span class="c-tipo">' + ic('folder',12) + 'Projeto' + (p.secao === 'futuro' ? ' · no Futuro' : '') + '</span>' + btnMenu(p) + '</div>' +
     '<div class="c-trow" style="align-items:center">' + btnConcluir(p) + '<textarea class="inp inp-title" rows="1" data-field="titulo" data-id="' + p.id + '" aria-label="Título do projeto" style="margin-left:-4px">' + esc(p.titulo) + '</textarea></div>' +
-    (state.ui.modoEdicao ? barraLayout('card') : '') + '<div>' + linhasCampos(p) + '</div>' + avisoDatas(p) + blocoLembreteDaOrigem(p) + '</section>';
+    '<div>' + linhasCampos(p) + '</div>' + avisoDatas(p) + blocoLembreteDaOrigem(p) + '</section>';
   const addBtn = fechado ? '<span class="muted">' + ic('info',13).replace('<svg ','<svg style="display:inline;vertical-align:-2px" ') + ' Projeto concluído — reabra para adicionar tarefas.</span>'
     : '<button type="button" class="btn prim sm" data-act="add-sub" data-id="' + id + '">' + ic('plus',14) + 'Adicionar tarefa ao projeto</button>';
   let corpo;
   if(pp.visao === 'foco'){
     corpo = focoHTML('projeto', subs, {semProjeto:true, placeholder:'Adicionar tarefa ao projeto', semAdicionar:fechado, vazio:'Nenhuma tarefa aberta neste projeto.'});
-  }else if(!subs.length && !noFuturo.length && !(state.ui.modoEdicao && pp.visao === 'kanban')){
+  }else if(!subs.length && !noFuturo.length){
     corpo = vazio('checkSq', state.ui.busca ? 'Nenhuma tarefa com essa busca' : 'Sem tarefas ainda', fechado ? '' : 'Quebre o projeto em passos pequenos.', fechado ? '' : '<button type="button" class="btn prim" data-act="add-sub" data-id="' + id + '">' + ic('plus',15) + 'Adicionar tarefa</button>');
   }else if(pp.visao === 'kanban'){
     // subtarefas: sempre as colunas de status de TAREFA (lembretes numa coluna própria)
@@ -4028,10 +3998,9 @@ function viewProjeto(id){
     corpo = (pp.ordem === 'entrega-asc' ? '<p class="hint" style="margin:-4px 0 10px">' + ic('sort',13) + '<span>Ordenado por ' + esc(nomeCampo('dataEntrega')) + ': do que vence primeiro até o que tem mais prazo.</span></p>' : '') +
       listaHTML('projeto', {itens:subs}, {addFlat:!fechado});
   }
-  const nConc = contaConcluidos('projeto');
-  const linkConc = nConc && pp.visao !== 'kanban' ? '<button type="button" class="kcol-conc" style="margin-top:10px" data-act="ver-concluidos" data-sec="projeto">' + ic('checkSq', 14) + 'Ver ' + nConc + ' tarefa' + (nConc > 1 ? 's' : '') + ' concluída' + (nConc > 1 ? 's' : '') + '</button>' : '';
   const futuro = noFuturo.length ? '<div style="margin-top:14px">' + grupo('projeto', 'sub-futuro', 'No Futuro', '<div class="cards">' + noFuturo.map(it => cardHTML(it, {layout:'lista', rodape: x => acaoFuturo(x) + '<span class="sp"></span>' + btnMenu(x)})).join('') + '</div>', noFuturo.length) + '</div>' : '';
-  return cab + '<div class="row-between" style="margin-bottom:10px;flex-wrap:wrap"><h2 style="font-size:15px;font-weight:670">Tarefas do projeto</h2>' + addBtn + '</div>' + corpo + linkConc + futuro +
+  return cab + '<div class="row-between" style="margin-bottom:10px;flex-wrap:wrap;gap:8px"><div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap"><h2 style="font-size:15px;font-weight:670">Tarefas do projeto</h2>' +
+      (contaConcluidos('projeto') || pp.concluidos ? btnVerConcluidos('projeto') : '') + '</div>' + addBtn + '</div>' + corpo + futuro +
     '<div style="margin-top:24px"><h2 style="font-size:15px;font-weight:670;margin-bottom:10px">Atividade do projeto</h2>' +
     '<div class="card" style="padding:0;overflow:hidden;-webkit-user-select:auto;user-select:auto">' + feedHTML(p, 'pg') + composerHTML(p, 'pg') + '</div></div>';
 }
@@ -4048,10 +4017,10 @@ function viewTarefas(){
   let base = items().filter(i => i.tipo === 'tarefa' && i.secao === 'tarefas');
   if(p.vinculo === 'com') base = base.filter(i => !!i.projetoId);
   if(p.vinculo === 'sem') base = base.filter(i => !i.projetoId);
-  const lista = ordenar(filtraConcluidos(filtraBusca(aplicaFiltros(base, 'tarefas'))), p.ordem, ctxOrdem('tarefas'));
+  const lista = ordenar(filtraConcluidos(filtraBusca(aplicaFiltros(base, 'tarefas')), 'tarefas'), p.ordem, ctxOrdem('tarefas'));
   const ag = p.agrupar === 'nenhum' && p.visao === 'kanban' ? 'status' : p.agrupar;
   if(p.visao === 'foco') return focoHTML('tarefas', lista, {placeholder:'Adicionar tarefa'});
-  if(!lista.length && !(state.ui.modoEdicao && p.visao === 'kanban' && ag === 'status')){
+  if(!lista.length){
     if(contaFiltros('tarefas') || state.ui.busca.trim().length >= 2) return vazio('filter', 'Nenhuma tarefa com esses filtros', '', (contaFiltros('tarefas') ? btnLimparFiltros('tarefas') : '') + (state.ui.busca ? btnLimparBusca() : ''));
     return vazio('checkSq', 'Nenhuma tarefa aberta', 'Crie uma tarefa ou faça a triagem da Entrada.', '<button type="button" class="btn prim" data-act="nova-tarefa">' + ic('plus',15) + 'Criar tarefa</button>');
   }
@@ -4187,13 +4156,20 @@ function viewRevisao(){
 function editorCategorias(){
   const cats = categorias().map(function(c){
     const n = items().filter(i => i.categoriaId === c.id).length;
-    return '<div class="cat-line"><input type="color" class="cor-in" style="width:32px;height:32px" value="' + esc(c.cor) + '" data-act="cat-cor" data-id="' + c.id + '" aria-label="Cor de ' + esc(c.nome) + '">' +
-      '<input class="inp" style="flex:1" value="' + esc(c.nome) + '" data-act="cat-nome" data-id="' + c.id + '" aria-label="Nome da categoria ' + esc(c.nome) + '">' +
-      '<span class="muted" style="white-space:nowrap">' + n + ' item(ns)</span>' +
-      '<button type="button" class="icon-btn sm" data-act="cat-excluir" data-id="' + c.id + '" aria-label="Excluir categoria ' + esc(c.nome) + '">' + ic('trash',16) + '</button></div>';
+    return '<div class="erow" data-sort-key="' + c.id + '"><span class="hdl" data-sort-handle title="Arrastar para reordenar">' + ic('grip',16) + '</span>' +
+      '<input type="color" class="cor-in" value="' + esc(c.cor) + '" data-act="cat-cor" data-id="' + c.id + '" aria-label="Cor de ' + esc(c.nome) + '">' +
+      '<input class="inp" value="' + esc(c.nome) + '" data-act="cat-nome" data-id="' + c.id + '" aria-label="Nome da categoria ' + esc(c.nome) + '">' +
+      '<span class="muted" title="Itens nesta categoria">' + n + '</span>' +
+      '<button type="button" class="icon-btn sm" data-act="cat-excluir" data-id="' + c.id + '" aria-label="Excluir categoria ' + esc(c.nome) + '">' + ic('trash',15) + '</button>' +
+      setas('categorias', c.id, c.nome) + '</div>';
   }).join('');
-  return '<section class="ebox"><h3>Categorias</h3><span class="muted">Agrupam projetos e tarefas por área (ex.: Trabalho, Pessoal). Aparecem no menu lateral e nos filtros.</span>' +
-    '<div style="margin-top:10px">' + (cats || '<p class="muted">Nenhuma categoria.</p>') + '</div>' +
+  // "Sem categoria" é fixa: não se renomeia, não se exclui e fica sempre por último
+  const nSem = items().filter(i => ativo(i) && i.tipo && !i.categoriaId).length;
+  const sem = '<div class="erow" title=""Categoria padrão: reúne o que não tem categoria"><span class="hdl" style="visibility:hidden">' + ic('grip',16) + '</span>' +
+    '<span class="cat-sem-dot"></span><span class="cat-sem-nm">Sem categoria</span>' +
+    '<span class="muted" title="Itens sem categoria">' + nSem + '</span><span class="badge">padrão</span></div>';
+  return '<section class="ebox"><h3>Categorias</h3><span class="muted">Agrupam projetos e tarefas por área (ex.: Trabalho, Pessoal). A ordem daqui vale para o menu lateral, os filtros e os agrupamentos.</span>' +
+    '<div style="margin-top:10px"><div data-sort-list="categorias" data-sort-axis="y">' + cats + '</div>' + sem + '</div>' +
     '<div style="display:flex;gap:8px;margin-top:12px"><input class="inp" id="novaCat" placeholder="Nova categoria" aria-label="Nome da nova categoria">' +
     '<button type="button" class="btn prim" data-act="cat-add">' + ic('plus',15) + 'Adicionar</button></div>' +
     '<p class="hint">' + ic('info',13) + '<span>Ao excluir uma categoria, os itens dela ficam “Sem categoria”.</span></p></section>';
@@ -4209,7 +4185,7 @@ function viewConfig(){
       sw('Menu lateral compacto (desktop)', 'Mostra só os ícones, com dica ao passar o mouse', 'toggle-sidebar-cfg', state.prefs.sidebarCompacta) +
       '<p class="hint">' + ic('info',13) + '<span>Concluídos saem das listas sozinhos e ficam em <a href="#/concluidos">Concluídos</a>; excluídos ficam ' + DIAS_LIXEIRA + ' dias na <a href="#/lixeira">Lixeira</a>.</span></p></section>' +
     '<h2 class="sect-t">Estrutura</h2><section class="card"><p style="font-size:14px;color:var(--text-2);margin-bottom:10px">Status das colunas do kanban, campos de projetos e tarefas, campos visíveis em card, kanban e lista, categorias e modelos de estrutura salvos.</p>' +
-      '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-act="nav" data-view="estrutura">' + ic('structure',15) + 'Abrir estrutura (modo edição)</button>' +
+      '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-act="nav" data-view="estrutura">' + ic('structure',15) + 'Abrir estrutura</button>' +
       '<button type="button" class="btn" data-act="aba-estrutura" data-v="categorias">' + ic('tag',15) + 'Categorias</button>' +
       '<button type="button" class="btn" data-act="aba-estrutura" data-v="modelos">' + ic('save',15) + 'Modelos de estrutura</button></div></section>' +
     '<h2 class="sect-t">Conta e sincronização</h2><section class="card" id="nuvemBox">' + nuvemHTML() + '</section>' +
@@ -4225,7 +4201,6 @@ function viewConfig(){
       '<div class="row-between"><span>Buscar</span><span class="kbd">/</span></div>' +
       '<div class="row-between"><span>Fechar painéis e editores</span><span class="kbd">Esc</span></div>' +
       '<div class="row-between"><span>Entrada · Hoje · Projetos · Tarefas</span><span><span class="kbd">1</span> <span class="kbd">2</span> <span class="kbd">3</span> <span class="kbd">4</span></span></div>' +
-      '<div class="row-between"><span>Modo edição</span><span class="kbd">E</span></div>' +
     '</div></section></div>';
 }
 
@@ -4399,7 +4374,6 @@ function renderPanel(){
       (it.secao === 'futuro' ? acaoFuturo(it) : '') +
       (it.tipo === 'projeto' && it.secao === 'projetos' ? '<button type="button" class="btn-acao" data-act="abrir-projeto" data-id="' + it.id + '">' + ic('folder',14) + 'Abrir página do projeto</button>' : '') + '</div>';
   }
-  if(state.ui.modoEdicao) corpo += barraLayout('card');
   corpo += '<div>' + linhasCampos(it) + '</div>' + avisoDatas(it) + blocoLembreteDaOrigem(it);
   if(proj){
     corpo += '<div class="box-info"><div class="flabel">Projeto</div>' +
@@ -5068,7 +5042,6 @@ const ACOES = {
   'sheet-mais': () => sheetMais(),
   'sheet-opcoes': d => sheetOpcoes(d.sec),
   /* concluídos, lixeira e revisão */
-  'ver-concluidos': d => irPara(hashDe({view:'concluidos', q:escopoConcluidos(d.sec)})),
   'conc-tipo': d => irPara(hashDe({view:'concluidos', q:Object.assign({}, state.ui.rota.q, {tipo:d.v || null})}), true),
   'limpar-busca-concl': () => { state.ui.buscaConcl = ''; state.ui.focar = '#buscaConcl'; render(); },
   'lix-restaurar': d => restaurarDaLixeira(d.id),
@@ -5161,11 +5134,12 @@ const ACOES = {
   },
   'limpar-filtros': d => limparFiltros(d.sec),
   'tog-quebra': () => { state.prefs.listaQuebra = !state.prefs.listaQuebra; persistirPrefs(); render(); toast(state.prefs.listaQuebra ? 'Quebra de linhas ligada em todas as visões' : 'Quebra de linhas desligada: textos longos serão truncados'); },
-  'toggle-edicao': () => {
-    state.ui.modoEdicao = !state.ui.modoEdicao;
-    state.ui.focar = '[data-act="toggle-edicao"]';
-    render();
-    toast(state.ui.modoEdicao ? 'Modo edição ativado' : 'Modo edição encerrado');
+  'tog-mais-ferr': () => { state.ui.maisFerr = !state.ui.maisFerr; state.ui.focar = '[data-act="tog-mais-ferr"]'; render(); },
+  'tog-concl': d => {
+    const p = state.prefs[d.sec]; if(!p) return;
+    p.concluidos = !p.concluidos;
+    persistirPrefs(); render();
+    toast(p.concluidos ? 'Mostrando os concluídos' : 'Concluídos ocultos');
   },
   'feed-filtro': d => { state.ui.feedFiltro = d.v; render(); },
   'enviar-cmt': d => {
@@ -5334,7 +5308,6 @@ document.addEventListener('keydown', function(e){
     if(state.ui.rota.item){ fecharPainel(); return; }
     if(state.prefs.sidebarExp && window.innerWidth < 1024){ state.prefs.sidebarExp = false; persistirPrefs(); render(); return; }
     if(state.ui.busca){ state.ui.busca = ''; render(); return; }
-    if(state.ui.modoEdicao){ ACOES['toggle-edicao'](); return; }
     if(digitando) el.blur();
     return;
   }
@@ -5364,7 +5337,6 @@ document.addEventListener('keydown', function(e){
   if(popAtual || menuAtual || sheetAtual) return;
   const k = e.key.toLowerCase();
   if(k === 'n'){ e.preventDefault(); sheetCaptura(); return; }
-  if(k === 'e'){ e.preventDefault(); ACOES['toggle-edicao'](); return; }
   if(k === '/'){ e.preventDefault(); const b = $('#buscaInput'); if(b && b.offsetParent) b.focus(); else sheetBusca(); return; }
   const mapa = {'1':'entrada','2':'hoje','3':'projetos','4':'tarefas'};
   if(mapa[e.key]){ e.preventDefault(); irPara('#/' + mapa[e.key]); }
