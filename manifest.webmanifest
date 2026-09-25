@@ -1,0 +1,24 @@
+{
+  "name": "Gestor de Projetos e Tarefas",
+  "short_name": "Gestor",
+  "description": "Gestor de projetos e tarefas pessoal, com triagem, lembretes e revisão semanal.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "./index.html#/hoje",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f6f7f9",
+  "theme_color": "#f6f7f9",
+  "icons": [
+    { "src": "icons/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Hoje", "url": "./index.html#/hoje" },
+    { "name": "Entrada", "url": "./index.html#/entrada" },
+    { "name": "Revisão semanal", "url": "./index.html#/revisao" }
+  ]
+}
