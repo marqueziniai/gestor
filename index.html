@@ -120,12 +120,14 @@ svg{display:block;flex:none}
   .sidebar:not(.exp) .sb-item,.sidebar:not(.exp) .sb-new{justify-content:center;padding:8px}
   .sidebar:not(.exp) .sb-head{flex-direction:column;padding:12px 8px 8px}
   .sidebar:not(.exp) .sb-sec-line{display:block}
+  .sidebar:not(.exp) .sb-exp,.sidebar:not(.exp) .sb-sub{display:none}
 }
 @media (min-width:1024px){
   .sidebar.compacta .lbl,.sidebar.compacta .sb-count,.sidebar.compacta .sb-sec,.sidebar.compacta .sb-new span,.sidebar.compacta .sb-name{display:none}
   .sidebar.compacta .sb-item,.sidebar.compacta .sb-new{justify-content:center;padding:8px}
   .sidebar.compacta .sb-head{flex-direction:column;padding:12px 8px 8px}
   .sidebar.compacta .sb-sec-line{display:block}
+  .sidebar.compacta .sb-exp,.sidebar.compacta .sb-sub{display:none}
 }
 .sb-sec-line{display:none;height:1px;background:var(--border);margin:10px 6px}
 
@@ -466,6 +468,37 @@ html.quebra .sb-item{align-items:center;line-height:1.3;padding-top:9px;padding-
 .dropbar .dz .cdot{width:8px;height:8px;border-radius:50%;flex:none}
 .dropbar .dz.over{border-style:solid;border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
 .dropbar .dz.atual{opacity:.45}
+.dropbar .dz-linha{display:flex;flex-wrap:wrap;gap:6px;width:100%}
+.dropbar .dz-linha .dz{flex:1 1 calc(33% - 6px)}
+.dropbar .dz-t{width:100%;font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);padding:2px 4px 0}
+.dropbar .dz.conv{border-color:var(--accent);color:var(--accent);font-weight:600}
+body:has(.dropbar) .fab{visibility:hidden}   /* o + não cobre os destinos durante o arraste */
+/* checklist da tarefa */
+.chk-barra{height:4px;border-radius:99px;background:var(--surface-3);overflow:hidden;margin:2px 0 8px}
+.chk-barra i{display:block;height:100%;background:var(--ok);border-radius:inherit;transition:width var(--t)}
+.chk-row{display:flex;align-items:center;gap:2px;min-height:40px;border-radius:var(--r-sm)}
+.chk-row.sorting{opacity:.4}
+.chk-box{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--border-2);display:grid;place-items:center;flex:none;margin:0 6px 0 2px;color:var(--accent-on);position:relative}
+.chk-box::after{content:"";position:absolute;inset:-10px}
+.chk-box.on{background:var(--accent);border-color:var(--accent)}
+.chk-txt{flex:1;min-width:0;background:transparent;border:1px solid transparent;border-radius:6px;padding:6px 8px;font:inherit;font-size:14px;color:var(--text);min-height:36px}
+.chk-txt:focus{border-color:var(--accent);background:var(--surface);outline:none}
+.chk-row.feito .chk-txt{text-decoration:line-through;color:var(--text-3)}
+.chk-add{display:flex;align-items:center;gap:6px;margin-top:4px;color:var(--text-3);padding-left:28px}
+.c-chk{display:inline-flex;align-items:center;gap:3px;font-size:12px;font-weight:600;color:var(--text-3);font-variant-numeric:tabular-nums;margin-top:4px}
+.c-chk.ok{color:var(--ok)}
+.c-chk-l{margin-top:2px}
+/* menu lateral: categorias em árvore */
+.sb-cat{display:flex;align-items:center;border-radius:var(--r-md)}
+.sb-cat .sb-item{flex:1;min-width:0}
+.sb-exp{width:24px;height:36px;flex:none;display:grid;place-items:center;color:var(--text-3);border-radius:6px;margin-right:-4px}
+@media (hover:hover){.sb-exp:not(:disabled):hover{color:var(--text);background:var(--surface-2)}}
+.sb-exp:disabled{opacity:.3;cursor:default}
+.sb-sub{margin:0 0 4px 20px;padding-left:6px;border-left:1px solid var(--border)}
+.sb-sub .sb-item{min-height:36px;font-size:13.5px}
+.sb-cat.over .sb-item,.sb-item.over{background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent)}
+.mais-dot{width:12px;height:12px;border-radius:4px;flex:none;margin:0 4px}
+.menu-ic{color:var(--text-3);display:grid;place-items:center;margin:0 4px}
 
 /* ---- Estados vazios ---- */
 .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:48px 20px;color:var(--text-3)}
@@ -729,7 +762,7 @@ mark{background:color-mix(in srgb,var(--caution) 32%,transparent);color:inherit;
 }
 /* iOS não aproxima a tela ao focar campos com 16px ou mais */
 @media (max-width:767px){
-  .inp,.kcol-input,.inp-inline,.dp-row .inp,.erow .inp,.composer textarea,.tb-search input,.foco-add input,.kcol-h .nm-in,.card.rascunho .kcol-input,.conc-busca .inp{font-size:16px}
+  .inp,.kcol-input,.inp-inline,.dp-row .inp,.erow .inp,.composer textarea,.tb-search input,.foco-add input,.kcol-h .nm-in,.card.rascunho .kcol-input,.conc-busca .inp,.chk-txt{font-size:16px}
   .inp-title,textarea.inp-title{font-size:18px}
 }
 
@@ -834,7 +867,7 @@ mark{background:color-mix(in srgb,var(--caution) 32%,transparent);color:inherit;
 /* =========================================================================
    MÓDULO 1 — CONSTANTES
    ========================================================================= */
-const SCHEMA_VERSION = 3;   // v3: "acompanhamento" virou "lembrete"; lixeira, modelos de estrutura e data de conclusão
+const SCHEMA_VERSION = 4;   // v3: "acompanhamento" virou "lembrete"; lixeira, modelos e data de conclusão · v4: checklist e categoria sempre do projeto
 const DIAS_LIXEIRA = 30;
 const LS_DADOS = 'gestor.dados';
 const LS_PREFS = 'gestor.prefs';
@@ -845,8 +878,12 @@ const NUVEM_CHAVE = 'sb_publishable_d6T897D6Ct37FqSTWVMnIQ_BkGJswXS';
 const LS_SESSAO   = 'gestor.nuvem.sessao';
 const LS_NUVEM    = 'gestor.nuvem';
 
-/** Seções do menu, na ordem de exibição. */
+/** Seções do menu, na ordem padrão (a ordem em uso vem de Estrutura → Menu: menuOrdem()). */
 const MENU = ['entrada','hoje','projetos','tarefas'];
+function menuOrdem(){
+  const m = (state.prefs.menu || []).filter((k, i, a) => MENU.indexOf(k) !== -1 && a.indexOf(k) === i);
+  return m.concat(MENU.filter(k => m.indexOf(k) === -1));
+}
 const SECOES = {
   entrada:  {nome:'Entrada',  icone:'inbox'},
   hoje:     {nome:'Hoje',     icone:'calendar'},
@@ -1129,7 +1166,9 @@ function prefsPadrao(){
     hoje:{visao:'lista', periodo:'hoje-vencidos', custIni:'', custFim:'', datas:['lemb','entrega'], tipos:['projeto','tarefa','lemb'], categorias:[], ordem:'data-asc', manual:[], colapsados:[]},
     projetos:{visao:'kanban', agrupar:'status', statusF:[], categorias:[], dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
     tarefas:{visao:'lista', agrupar:'status', vinculo:'todas', lembF:'todas', statusF:[], categorias:[], projetosF:[], dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
-    projeto:{visao:'kanban', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false}
+    projeto:{visao:'kanban', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
+    categoria:{visao:'kanban', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
+    menu:MENU.slice(), catsAbertas:[]
   };
 }
 function mescla(alvo, padrao){
@@ -1205,6 +1244,20 @@ function migrarPrefsV4(p){
 function migrarDados(d, versao){
   if(versao < 2) d = migrarDaVersao1(d);
   if(versao < 3) d = migrarParaV3(d);
+  if(versao < 4) d = migrarParaV4(d);
+  return d;
+}
+/** v3 → v4: a categoria passa a ser do projeto; tarefas com categoria diferente da do projeto são alinhadas (fica no histórico). */
+function migrarParaV4(d){
+  const porId = {};
+  d.items.forEach(i => { porId[i.id] = i; });
+  const nome = id => { const c = (d.categorias || []).find(x => x.id === id); return c ? c.nome : 'Sem categoria'; };
+  d.items.forEach(function(t){
+    const p = t.projetoId && porId[t.projetoId];
+    if(!p || p.tipo !== 'projeto' || (t.categoriaId || null) === (p.categoriaId || null)) return;
+    (t.atividade = t.atividade || []).push(novoLog({icone:'tag', rotulo:'Categoria', de:nome(t.categoriaId), para:nome(p.categoriaId), nota:'alinhada à do projeto'}));
+    t.categoriaId = p.categoriaId || null;
+  });
   return d;
 }
 /** v2 → v3: "acompanhamento" vira "lembrete" (campos, subtipo, recorrência, títulos, estrutura e layouts). */
@@ -1636,10 +1689,10 @@ function alterar(id, mud, opts){
     const p = getItem(mud.projetoId);
     if(p && concluido(p)){ toast('“' + p.titulo + '” está concluído e não aceita novas tarefas'); render(); return null; }
   }
-  // tarefa sem categoria vinculada a um projeto herda a categoria dele (pode ser alterada depois)
-  if(mud.projetoId && mud.projetoId !== it.projetoId && !it.categoriaId && !('categoriaId' in mud) && !ehLembrete(it)){
+  // a categoria é do projeto: ao entrar num projeto, a tarefa passa a ter a categoria dele
+  if(mud.projetoId && mud.projetoId !== it.projetoId){
     const p = getItem(mud.projetoId);
-    if(p && p.categoriaId) mud = Object.assign({}, mud, {categoriaId:p.categoriaId});
+    if(p) mud = Object.assign({}, mud, {categoriaId:p.categoriaId || null});
   }
   const tituloAntigo = it.titulo;
   let mudou = false;
@@ -1653,6 +1706,7 @@ function alterar(id, mud, opts){
   });
   if(!mudou){ if(!opts.semRender) render(); return it; }
   it.atualizadoEm = agoraISO();
+  if('categoriaId' in mud && it.tipo === 'projeto') alinharCategoriaDoProjeto(it);
   if('status' in mud && it.tipo) it.concluidoEm = concluido(it) ? (it.concluidoEm || agoraISO()) : null;
   // o título do lembrete acompanha o da origem, se não foi personalizado
   if('titulo' in mud){ const f = lembreteDe(it.id); if(f && f.titulo === tituloAntigo) f.titulo = it.titulo; }
@@ -1661,6 +1715,15 @@ function alterar(id, mud, opts){
   persistir();
   if(!opts.semRender) render();
   return it;
+}
+/** Tarefas (e lembretes) do projeto seguem a categoria dele. */
+function alinharCategoriaDoProjeto(p){
+  const nova = p.categoriaId || null;
+  items().forEach(function(t){
+    if(t === p || !(t.projetoId === p.id || (ehLembrete(t) && t.origemId === p.id)) || (t.categoriaId || null) === nova) return;
+    registrar(t, Object.assign(logDeCampo(t, 'categoriaId', t.categoriaId, nova), {nota:'segue o projeto'}));
+    t.categoriaId = nova;
+  });
 }
 /** Status com a data de conclusão coerente (para quem altera o status sem passar por alterar). */
 function marcarStatus(it, sid){
@@ -1690,7 +1753,7 @@ function criarItem(base, opts){
   if(it.projetoId){
     const p = getItem(it.projetoId);
     if(!p || concluido(p)) it.projetoId = null;
-    else if(!it.categoriaId && !(base && 'categoriaId' in base)) it.categoriaId = p.categoriaId;   // herda a categoria do projeto
+    else it.categoriaId = p.categoriaId || null;   // a categoria é do projeto: as tarefas dele sempre a seguem
   }
   if(concluido(it)) it.concluidoEm = agora;
   it.atividade.push(novoLog({icone:'sparkle', texto:'Item criado em ' + LOCAIS[it.secao]}));
@@ -2194,31 +2257,161 @@ function duplicar(id){
   persistir(); render();
   toast('Item duplicado', () => { removerItens([novo.id]); persistir(); render(); });
 }
-function converterTipo(id){
+/**
+ * Tarefa ⇄ projeto. Tarefa → projeto: os itens do checklist viram tarefas dele (sai do projeto em que estava e mantém a categoria).
+ * Projeto → tarefa: as tarefas dele viram itens do checklist; as originais (com datas e comentários) vão juntas para a lixeira.
+ * opts.confirmar: pergunta mesmo sem dependentes (ao arrastar para "Projetos" ou "Tarefas").
+ */
+function converterTipo(id, opts){
+  opts = opts || {};
   const it = getItem(id); if(!it || !it.tipo || ehLembrete(it)) return;
   const para = it.tipo === 'projeto' ? 'tarefa' : 'projeto';
+  const subs = para === 'tarefa' ? items().filter(t => t.tipo === 'tarefa' && t.projetoId === it.id && !ehLembrete(t)) : [];
+  const lista = para === 'projeto' ? checklist(it).slice() : [];
+  const pai = para === 'projeto' && it.projetoId ? getItem(it.projetoId) : null;
+  const plural = (n, um, varios) => n + ' ' + (n > 1 ? varios : um);
   function fazer(){
     const snap = snapshot();
-    const mud = {tipo:para, status:mapeiaStatus(it, para)};
-    if(para === 'projeto'){ mud.projetoId = null; if(it.secao === 'tarefas') mud.secao = 'projetos'; }
-    else if(it.secao === 'projetos') mud.secao = 'tarefas';
-    alterar(id, mud);
-    toast('Convertido em ' + (para === 'projeto' ? 'projeto' : 'tarefa'), () => restaurar(snap));
+    if(para === 'tarefa'){
+      const novos = subs.map(t => ({id:uid('ck'), texto:t.titulo, feito:concluido(t)}));
+      if(subs.length) moverParaLixeira(subs.map(t => t.id), subs[0].id);
+      it.checklist = checklist(it).concat(novos);
+      it.proximaId = null;
+      const mud = {tipo:'tarefa', status:mapeiaStatus(it, 'tarefa')};
+      if(it.secao === 'projetos') mud.secao = 'tarefas';
+      alterar(id, mud, {semRender:true});
+      if(novos.length) registrar(it, {icone:'checkSq', texto:plural(novos.length, 'tarefa virou item', 'tarefas viraram itens') + ' do checklist'});
+    }else{
+      const mud = {tipo:'projeto', status:mapeiaStatus(it, 'projeto'), projetoId:null};
+      if(it.secao === 'tarefas') mud.secao = 'projetos';
+      alterar(id, mud, {semRender:true});
+      lista.forEach(function(c){
+        const t = criarItem({tipo:'tarefa', secao: it.secao === 'futuro' ? 'futuro' : 'tarefas', projetoId:id, categoriaId:it.categoriaId, titulo:c.texto,
+          status: c.feito ? statusFinal('tarefa').id : undefined}, {semRender:true});
+        if(!t.projetoId){ t.projetoId = id; t.categoriaId = it.categoriaId || null; }   // projeto já concluído também recebe as tarefas
+      });
+      it.checklist = [];
+      if(lista.length) registrar(it, {icone:'checkSq', texto:plural(lista.length, 'item do checklist virou tarefa', 'itens do checklist viraram tarefas')});
+    }
+    if(state.ui.rota.view === 'projetos' && state.ui.rota.id === id && para === 'tarefa') irPara('#/tarefas', true);
+    persistir(); render();
+    toast('“' + it.titulo + '” agora é ' + (para === 'projeto' ? 'um projeto' : 'uma tarefa'), () => restaurar(snap),
+      para === 'projeto' && it.secao === 'projetos' ? {label:'Abrir', fn:() => irPara('#/projetos/' + id)} : {label:'Abrir', fn:() => abrirItem(id, true)});
+  }
+  if(!opts.confirmar && !subs.length && !lista.length) return fazer();
+  const texto = para === 'projeto'
+    ? '“' + it.titulo + '” vira projeto.' + (lista.length ? ' ' + (lista.length > 1 ? 'Os ' + lista.length + ' itens do checklist viram tarefas dele.' : 'O item do checklist vira tarefa dele.') : '') +
+      (pai ? ' Ele sai do projeto “' + pai.titulo + '” e continua em ' + nomeCat(it.categoriaId) + '.' : '')
+    : '“' + it.titulo + '” vira tarefa.' + (subs.length ? ' ' + (subs.length > 1 ? 'As ' + subs.length + ' tarefas dele viram itens do checklist.' : 'A tarefa dele vira item do checklist.') +
+      ' As originais, com datas e comentários, ficam ' + DIAS_LIXEIRA + ' dias na lixeira.' : '');
+  abrirConfirm({titulo: para === 'projeto' ? 'Transformar em projeto' : 'Transformar em tarefa', texto,
+    opcoes:[{label: para === 'projeto' ? 'Transformar em projeto' : 'Transformar em tarefa', valor:'ok', variante:'prim'}, {label:'Cancelar', valor:null}]
+  }).then(r => { if(r === 'ok') fazer(); });
+}
+/**
+ * A categoria é do projeto. Mudar a de um projeto leva as tarefas dele; a de uma tarefa de projeto pede uma escolha
+ * (mover o projeto inteiro ou tirar a tarefa do projeto). opts.confirmar: pergunta também nos casos simples (arrastar).
+ */
+function mudarCategoria(id, catId, opts){
+  opts = opts || {};
+  const it = getItem(id); if(!it) return;
+  if(ehLembrete(it)){ toast('A categoria de um lembrete segue a origem'); return; }
+  catId = catId && getCat(catId) ? catId : null;
+  const destino = catId ? '“' + nomeCat(catId) + '”' : 'Sem categoria';
+  const p = it.tipo === 'tarefa' && it.projetoId ? getItem(it.projetoId) : null;
+  if((it.categoriaId || null) === catId && (!p || (p.categoriaId || null) === catId)){ toast('“' + it.titulo + '” já está em ' + destino); return; }
+  const nTarefas = pid => items().filter(t => t.projetoId === pid && !ehLembrete(t)).length;
+  function aplicar(alvoId, mud, msg){
+    const snap = snapshot();
+    alterar(alvoId, mud);
+    toast(msg, () => restaurar(snap));
+  }
+  const confirmar = (texto, rot, fn) => abrirConfirm({titulo:'Mover para ' + destino, texto, opcoes:[{label:rot, valor:'ok', variante:'prim'}, {label:'Cancelar', valor:null}]}).then(r => { if(r === 'ok') fn(); });
+  if(p){
+    const n = nTarefas(p.id);
+    abrirConfirm({titulo:'Mover para ' + destino, texto:'“' + it.titulo + '” é do projeto “' + p.titulo + '”, e as tarefas de um projeto ficam sempre na categoria dele. O que prefere?',
+      opcoes:[{label:'Mover o projeto inteiro (' + n + (n > 1 ? ' tarefas)' : ' tarefa)'), valor:'proj', variante:'prim'}, {label:'Tirar do projeto e mover só esta tarefa', valor:'so'}, {label:'Cancelar', valor:null}]
+    }).then(function(r){
+      if(r === 'proj') aplicar(p.id, {categoriaId:catId}, 'Projeto “' + p.titulo + '” e ' + n + (n > 1 ? ' tarefas' : ' tarefa') + ' em ' + destino);
+      else if(r === 'so') aplicar(id, {projetoId:null, categoriaId:catId}, '“' + it.titulo + '” saiu do projeto e foi para ' + destino);
+    });
+    return;
   }
   if(it.tipo === 'projeto'){
-    const subs = items().filter(t => t.tipo === 'tarefa' && t.projetoId === it.id && !ehLembrete(t));
-    if(subs.length){
-      abrirConfirm({titulo:'Converter projeto em tarefa', texto:'“' + it.titulo + '” tem ' + subs.length + ' tarefa(s). Para converter, elas serão desvinculadas e viram tarefas sem projeto.',
-        opcoes:[{label:'Desvincular e converter', valor:'ok', variante:'prim'},{label:'Cancelar', valor:null}]
-      }).then(function(r){
-        if(r !== 'ok') return;
-        subs.forEach(s => alterar(s.id, {projetoId:null}, {semRender:true}));
-        fazer();
-      });
-      return;
-    }
+    const n = nTarefas(it.id);
+    const msg = '“' + it.titulo + '”' + (n ? ' e ' + n + (n > 1 ? ' tarefas' : ' tarefa') : '') + ' em ' + destino;
+    if(!opts.confirmar) return aplicar(id, {categoriaId:catId}, msg);
+    return confirmar('O projeto “' + it.titulo + '”' + (n ? ' e ' + (n > 1 ? 'as ' + n + ' tarefas dele passam' : 'a tarefa dele passam') : ' passa') + ' para ' + destino + '.', 'Mover', () => aplicar(id, {categoriaId:catId}, msg));
   }
-  fazer();
+  const msg = '“' + it.titulo + '” em ' + destino;
+  if(!opts.confirmar) return aplicar(id, {categoriaId:catId}, msg);
+  confirmar('“' + it.titulo + '” passa para ' + destino + '.', 'Mover', () => aplicar(id, {categoriaId:catId}, msg));
+}
+
+/* --- Checklist da tarefa: itens simples (texto e feito), ordenáveis, que podem virar tarefas --- */
+function checklist(it){ return it && Array.isArray(it.checklist) ? it.checklist : []; }
+function chkItem(id, k){ return checklist(getItem(id)).find(c => c.id === k) || null; }
+function chkAdicionar(id, texto){
+  const it = getItem(id); texto = String(texto || '').trim();
+  if(!it || !texto) return;
+  it.checklist = checklist(it).concat([{id:uid('ck'), texto, feito:false}]);
+  it.atualizadoEm = agoraISO();
+  state.ui.focar = '[data-act="chk-add-in"][data-id="' + id + '"]';   // segue no campo para o próximo item
+  persistir(); render();
+}
+function chkAlternar(id, k){
+  const it = getItem(id), c = chkItem(id, k); if(!c) return;
+  c.feito = !c.feito; it.atualizadoEm = agoraISO();
+  state.ui.focar = '[data-act="chk-tog"][data-k="' + k + '"]';
+  persistir(); render();
+}
+function chkTexto(id, k, v){
+  const c = chkItem(id, k); if(!c) return;
+  v = String(v || '').trim();
+  if(!v) return chkExcluir(id, k);
+  if(v === c.texto) return;
+  c.texto = v; getItem(id).atualizadoEm = agoraISO();
+  persistir(); render();
+}
+function chkExcluir(id, k){
+  const it = getItem(id), c = chkItem(id, k); if(!c) return;
+  const snap = snapshot();
+  it.checklist = checklist(it).filter(x => x.id !== k);
+  it.atualizadoEm = agoraISO();
+  persistir(); render();
+  toast('“' + c.texto + '” removido do checklist', () => restaurar(snap));
+}
+/** O item vira tarefa no mesmo projeto da tarefa de origem (e, com ele, na mesma categoria). */
+function chkVirarTarefa(id, k){
+  const it = getItem(id), c = chkItem(id, k); if(!it || !c) return;
+  const p = it.projetoId ? getItem(it.projetoId) : null;
+  if(p && concluido(p)){ toast('“' + p.titulo + '” está concluído e não aceita novas tarefas'); return; }
+  const snap = snapshot();
+  const t = criarItem({tipo:'tarefa', secao: it.secao === 'futuro' ? 'futuro' : 'tarefas', projetoId: p ? p.id : null, categoriaId:it.categoriaId, titulo:c.texto,
+    status: c.feito ? statusFinal('tarefa').id : undefined}, {semRender:true});
+  it.checklist = checklist(it).filter(x => x.id !== k);
+  registrar(it, {icone:'split', texto:'Item do checklist virou tarefa: “' + c.texto + '”'});
+  persistir(); render();
+  toast('“' + c.texto + '” agora é uma tarefa' + (p ? ' de “' + p.titulo + '”' : ''), () => restaurar(snap), {label:'Abrir', fn:() => abrirItem(t.id)});
+}
+function checklistHTML(it){
+  const l = checklist(it), feitos = l.filter(c => c.feito).length;
+  const linhas = l.map(c => '<div class="chk-row' + (c.feito ? ' feito' : '') + '" data-sort-key="' + c.id + '">' +
+      '<span class="hdl" data-sort-handle title="Arrastar para reordenar">' + ic('grip',15) + '</span>' +
+      '<button type="button" class="chk-box' + (c.feito ? ' on' : '') + '" role="checkbox" aria-checked="' + c.feito + '" data-act="chk-tog" data-id="' + it.id + '" data-k="' + c.id + '" aria-label="' + esc(c.texto) + '">' + (c.feito ? ic('check',13) : '') + '</button>' +
+      '<input class="chk-txt" value="' + esc(c.texto) + '" data-act="chk-texto" data-id="' + it.id + '" data-k="' + c.id + '" aria-label="Texto do item do checklist" autocomplete="off">' +
+      '<button type="button" class="icon-btn sm" data-act="chk-menu" data-id="' + it.id + '" data-k="' + c.id + '" aria-label="Ações do item “' + esc(c.texto) + '”">' + ic('more',16) + '</button></div>').join('');
+  return '<div class="box-info chkl"><div class="flabel">Checklist' + (l.length ? ' · ' + feitos + ' de ' + l.length : '') + '</div>' +
+    (l.length ? '<div class="chk-barra" aria-hidden="true"><i style="width:' + Math.round(feitos / l.length * 100) + '%"></i></div>' +
+      '<div data-sort-list="checklist:' + it.id + '" data-sort-axis="y">' + linhas + '</div>' : '') +
+    '<div class="chk-add">' + ic('plus',15) + '<input class="chk-txt" data-act="chk-add-in" data-id="' + it.id + '" placeholder="Adicionar item" aria-label="Adicionar item ao checklist" enterkeyhint="done" autocomplete="off" autocapitalize="sentences"></div></div>';
+}
+/** Resumo "☑ 2/5" nos cards e linhas de tarefas com checklist. */
+function chkResumo(it){
+  const l = it.tipo === 'tarefa' ? checklist(it) : [];
+  if(!l.length) return '';
+  const f = l.filter(c => c.feito).length;
+  return '<span class="c-chk' + (f === l.length ? ' ok' : '') + '" title="Checklist: ' + f + ' de ' + l.length + '">' + ic('checkSq',12) + f + '/' + l.length + '</span>';
 }
 
 /* --- Comentários --- */
@@ -2354,6 +2547,8 @@ function aplicarOrdem(chave, ids){
   if(chave.indexOf('status:') === 0){ const t = chave.split(':')[1]; estr().status[t] = reordena(estr().status[t], s => s.id); }
   else if(chave === 'campos'){ estr().campos = reordena(campos(), c => c.id); }
   else if(chave === 'categorias'){ state.dados.categorias = reordena(categorias(), c => c.id); }
+  else if(chave.indexOf('checklist:') === 0){ const it = getItem(chave.slice(10)); if(it) it.checklist = reordena(checklist(it), c => c.id); }
+  else if(chave === 'menu'){ state.prefs.menu = reordena(menuOrdem(), k => k); persistirPrefs(); render(); return; }
   else if(chave.indexOf('layout:') === 0 || chave.indexOf('layoutfull:') === 0){ const v = chave.split(':')[1]; estr().layouts[v] = reordena(estr().layouts[v], e => e.id); }
   persistir(); render();
 }
@@ -2362,6 +2557,8 @@ function moverNaOrdem(chave, id, delta){
   if(chave.indexOf('status:') === 0) lista = estr().status[chave.split(':')[1]].map(s => s.id);
   else if(chave === 'campos') lista = campos().map(c => c.id);
   else if(chave === 'categorias') lista = categorias().map(c => c.id);
+  else if(chave === 'menu') lista = menuOrdem().slice();
+  else if(chave.indexOf('checklist:') === 0) lista = checklist(getItem(chave.slice(10))).map(c => c.id);
   else if(chave.indexOf('layoutfull:') === 0) lista = layout(chave.split(':')[1]).map(e => e.id);
   else lista = layoutVisivel(chave.split(':')[1]);
   const i = lista.indexOf(id), j = i + delta;
@@ -2489,7 +2686,7 @@ function carregarExemplo(){ state.dados = dadosExemplo(); normalizarDados(); }
 /* =========================================================================
    MÓDULO 10 — ROTEAMENTO (hash)
    ========================================================================= */
-const VIEWS = ['entrada','hoje','projetos','tarefas','revisao','concluidos','lixeira','config','estrutura'];
+const VIEWS = ['entrada','hoje','projetos','tarefas','categoria','revisao','concluidos','lixeira','config','estrutura'];
 /** q: filtros da página de Concluídos (tipo, projeto) e a seção de onde se veio (de). */
 function parseHash(){
   const h = (location.hash || '#/hoje').replace(/^#/, '');
@@ -2500,7 +2697,7 @@ function parseHash(){
   if(VIEWS.indexOf(view) === -1) view = 'hoje';
   const q = {};
   ['tipo','projeto','de'].forEach(k => { if(qs.get(k)) q[k] = qs.get(k); });
-  return {view, id: view === 'projetos' ? (cam[1] || null) : null, item: qs.get('item'), q};
+  return {view, id: view === 'projetos' || view === 'categoria' ? (cam[1] || null) : null, item: qs.get('item'), q};
 }
 function hashDe(r){
   const qs = [];
@@ -2945,9 +3142,8 @@ function abrirEditorCampo(anchor, id, cid){
       return abrirMenu(anchor, [{titulo:'Status do projeto'}].concat(
         listaStatus('projeto').map(s => ({id:s.id, label:s.nome, cor:s.cor, marcado:s.id === p.status, acao:() => setStatusProjetoDeTarefa(id, s.id)}))), {sel});
     }
-    case 'categoriaId': return abrirMenu(anchor, [{titulo:nome}, {id:'sem', label:'Sem categoria', marcado:!it.categoriaId, acao:() => alterar(id, {categoriaId:null})}]
-      .concat(categorias().map(c => ({id:c.id, label:c.nome, cor:c.cor, marcado:c.id === it.categoriaId, acao:() => alterar(id, {categoriaId:c.id})})))
-      .concat(['-', {id:'ger', label:'Gerenciar categorias', icone:'gear', acao:() => irPara('#/config')}]), {sel});
+    case 'categoriaId': return abrirMenu(anchor, [{titulo:nome}].concat(categorias().map(c => ({id:c.id, label:c.nome, cor:c.cor, marcado:c.id === it.categoriaId, acao:() => mudarCategoria(id, c.id)})))
+      .concat([{id:'sem', label:'Sem categoria', marcado:!it.categoriaId, acao:() => mudarCategoria(id, null)}, '-', {id:'ger', label:'Gerenciar categorias', icone:'gear', acao:() => ACOES['aba-estrutura']({v:'categorias'})}]), {sel});
     case 'projetoId': return menuProjeto(anchor, it, sel);
     case 'descricao':
       if(ehLembrete(it)) return popTexto(anchor, {titulo:nomeCampo('textoLembrete'), valor:it.descricao, multi:true, sel, salvar:v => definirTextoLembrete(id, v)});
@@ -3176,6 +3372,8 @@ function cardHTML(it, ctx){
     buf.push('<button type="button" class="fc vazio" data-act="campos-vazios" data-id="' + it.id + '" data-campos="' + vazios.join(',') + '" aria-label="Preencher: ' + esc(vazios.map(nomeCampo).join(', ')) + '">' + ic('plus', 12) + esc(rot) + '</button>');
   }
   flush();
+  const resumo = chkResumo(it);
+  if(resumo) corpo += '<div class="c-chk-l">' + resumo + '</div>';
   // GTD: projeto sem próxima ação avisa no card mesmo com o campo oculto no layout
   if(semProxima(it) && layoutVisivel(ctx.layout).indexOf('proximaAcao') === -1) corpo += alertaProxima(it);
   const pe = ctx.rodape ? ctx.rodape(it) : '';
@@ -3250,7 +3448,7 @@ function focoHTML(sec, itens, o){
   const manual = (state.prefs[sec] || {}).ordem === 'manual';
   const ordemInfo = abertos.length > 1 ? '<p class="foco-ordem">' + ic(manual ? 'grip' : 'info', 13) +
     (manual ? '<span>Ordem personalizada.</span><button type="button" class="btn sm ghost" data-act="sheet-ordem" data-sec="' + sec + '">Alterar ordem</button>'
-            : '<span>' + (ehToque() ? 'Segure e arraste' : 'Arraste') + (sec === 'projetos' ? ' um projeto' : ' uma tarefa') + ' para definir a sua ordem.</span>') + '</p>' : '';
+            : '<span>' + (ehToque() ? 'Segure e arraste' : 'Arraste') + (sec === 'projetos' || sec === 'categoria' ? ' um projeto' : ' uma tarefa') + ' para definir a sua ordem.</span>') + '</p>' : '';
   const corpo = blocos.map(g => grupo(sec, 'foco-' + g.chave, g.nome, lista(g.itens), g.itens.length)).join('') +
     (feitos.length ? grupo(sec, 'foco-feitas', 'Concluídas', '<div class="foco-lista" role="list">' + feitos.map(it => linhaFoco(it, {semProjeto:o.semProjeto})).join('') + '</div>', feitos.length) : '');
   return '<div class="foco">' + add + (corpo ? ordemInfo + corpo : vazio('sparkle', 'Tudo em dia 🎉', o.vazio || 'Nenhuma tarefa aberta por aqui.')) + '</div>';
@@ -3292,6 +3490,7 @@ function heranca(sec, col){
     else if(ag === 'faixa') b.dataEntrega = FAIXAS.some(f => f[0] === col) ? primeiroDiaFaixa(col) : null;
   }
   else if(sec === 'hoje'){ Object.assign(b, {tipo:'tarefa', secao:'tarefas', dataEntrega:primeiroDiaFaixa(col)}); }
+  else if(sec === 'categoria'){ Object.assign(b, {tipo:'projeto', secao:'projetos', categoriaId: getCat(r.id) ? r.id : null}); if(statusPorId('projeto', col)) b.status = col; }
   return b;
 }
 function rascunhoHTML(sec, col, rotuloCol){
@@ -3311,6 +3510,8 @@ function rascunhoHTML(sec, col, rotuloCol){
 function botaoAdicionar(sec, col, cls){
   return '<button type="button" class="' + (cls || 'kcol-add') + '" data-act="add-col" data-sec="' + sec + '" data-col="' + esc(col) + '">' + ic('plus',15) + 'Adicionar</button>';
 }
+/** Seções em que cards e linhas da lista podem ser arrastados (para o menu lateral ou, no celular, para a barra de destinos). */
+const SECOES_ARRASTAVEIS = ['hoje','projetos','tarefas','projeto','categoria'];
 /**
  * Lista responsiva. Grade de colunas no desktop quando cabe; senão (ou no mobile), lista de cards — sem rolagem lateral.
  * conteudo: {itens} ou {grupos:[{chave, nome, itens, sempre}]}. ctx: {motivoFn, acaoLinha, rodape, vazioGrupo, podeAdicionar(chave), addFlat}
@@ -3340,8 +3541,9 @@ function listaHTML(sec, conteudo, ctx){
   const minw = larg.reduce((s, l) => s + l[0], 0) + extras;
   // grade só quando há espaço; com quebra de linha, se não couber, vira cards (tudo visível, sem rolagem lateral)
   const usarGrade = ehDesktop() && (!quebra || minw <= util);
+  const arrasta = SECOES_ARRASTAVEIS.indexOf(sec) !== -1;
   if(!usarGrade){
-    const card = it => cardHTML(it, {layout:'lista', motivo: ctx.motivoFn ? ctx.motivoFn(it) : null, rodape:ctx.rodape});
+    const card = it => cardHTML(it, {layout:'lista', motivo: ctx.motivoFn ? ctx.motivoFn(it) : null, rodape:ctx.rodape, arrastavel:arrasta});
     const bloco = (its, col, nome) => (its.length ? '<div class="cards">' + its.map(card).join('') + '</div>' : (addAberto(col) ? '' : '<p class="muted" style="padding:4px 6px">' + esc(ctx.vazioGrupo || 'Nada aqui') + '</p>')) + rodapeAdd(col, nome);
     const corpo = grupos ? grupos.map(g => grupo(sec, g.chave, g.nome, bloco(g.itens, g.chave, g.nome), g.itens.length)).join('') : bloco(conteudo.itens, '__todos', 'lista');
     return '<div class="lista-m' + (quebra ? ' quebra' : '') + '">' + corpo + '</div>';
@@ -3361,13 +3563,13 @@ function listaHTML(sec, conteudo, ctx){
     const cells = cols.map(function(cid){
       const pc = pecaCampo(it, cid, 'lista');
       let h = pc ? pc.h : '';
-      if(cid === 'titulo') h = '<div class="c-trow">' + btnConcluir(it) + '<div style="flex:1;min-width:0">' + h + linhaMotivo(m, 'cell-motivo') +
+      if(cid === 'titulo') h = '<div class="c-trow">' + btnConcluir(it) + '<div style="flex:1;min-width:0">' + h + chkResumo(it) + linhaMotivo(m, 'cell-motivo') +
         (ehProxima(it) && cols.indexOf('tipo') === -1 ? '<span class="c-prox" style="margin-top:3px">' + ic('play', 11) + 'Próxima</span>' : '') +
         (semProxima(it) && cols.indexOf('proximaAcao') === -1 ? alertaProxima(it) : '') + '</div></div>';
       return '<div class="lcell">' + h + '</div>';
     }).join('');
     const acao = ctx.acaoLinha && !sub ? ctx.acaoLinha(it) : '';
-    let h = '<div class="lrow' + (sub ? ' sub' : '') + (ehLembrete(it) ? ' lemb' : '') + (concluido(it) ? ' done' : '') + '">' + cells + '<div class="lcell lacoes">' + acao + btnMenu(it) + '</div></div>';
+    let h = '<div class="lrow' + (sub ? ' sub' : '') + (ehLembrete(it) ? ' lemb' : '') + (concluido(it) ? ' done' : '') + '"' + (arrasta ? ' data-drag-id="' + it.id + '"' : '') + '>' + cells + '<div class="lcell lacoes">' + acao + btnMenu(it) + '</div></div>';
     if(!sub && it.tipo === 'projeto' && state.ui.expandidos.has(it.id)){
       const ts = tarefasDoProjeto(it);
       h += ts.length ? ts.map(t => linha(t, true)).join('') : '<div class="lrow sub"><div class="lcell muted">Nenhuma tarefa neste projeto.</div></div>';
@@ -3471,28 +3673,31 @@ function renderSidebar(){
   const c = contadores(), r = state.ui.rota, sb = $('#sidebar');
   const desk = window.innerWidth >= 1024;
   const compacta = desk ? state.prefs.sidebarCompacta : !state.prefs.sidebarExp;
-  const nav = MENU.map(function(k){
+  const nav = menuOrdem().map(function(k){
     const atual = r.view === k && !(k === 'projetos' && r.id);
-    return '<button type="button" class="sb-item" data-act="nav" data-view="' + k + '"' + (atual ? ' aria-current="page"' : '') + ' data-tip="' + SECOES[k].nome + (c[k] ? ' (' + c[k] + ')' : '') + '" aria-label="' + SECOES[k].nome + (c[k] ? ', ' + c[k] + ' itens' : '') + '">' +
+    // soltar um card em "Projetos" ou "Tarefas" converte o tipo (com confirmação)
+    const alvo = k === 'projetos' ? ' data-drop="1" data-drop-kind="converter" data-drop-col="projeto"' : k === 'tarefas' ? ' data-drop="1" data-drop-kind="converter" data-drop-col="tarefa"' : '';
+    return '<button type="button" class="sb-item" data-act="nav" data-view="' + k + '"' + alvo + (atual ? ' aria-current="page"' : '') + ' data-tip="' + SECOES[k].nome + (c[k] ? ' (' + c[k] + ')' : '') + '" aria-label="' + SECOES[k].nome + (c[k] ? ', ' + c[k] + ' itens' : '') + '">' +
       ic(SECOES[k].icone, 18) + '<span class="lbl">' + SECOES[k].nome + '</span><span class="sb-count">' + c[k] + '</span></button>';
   }).join('');
-  const sec = secaoDaRota();
-  const catAtivas = (state.prefs[sec] && state.prefs[sec].categorias) || [];
-  const cats = categorias().map(function(cat){
-    const n = items().filter(i => i.categoriaId === cat.id && ativo(i) && i.tipo && !concluido(i)).length;
-    const on = catAtivas.length === 1 && catAtivas[0] === cat.id;
-    return '<button type="button" class="sb-item" data-act="filtrar-cat" data-cat="' + cat.id + '" aria-pressed="' + on + '" data-tip="Filtrar: ' + esc(cat.nome) + '" aria-label="Filtrar pela categoria ' + esc(cat.nome) + '">' +
-      '<span class="sb-dot" style="background:' + esc(cat.cor) + '"></span><span class="lbl">' + esc(cat.nome) + '</span><span class="sb-count">' + n + '</span></button>';
-  }).join('') + (function(){
-    const n = items().filter(i => !i.categoriaId && ativo(i) && i.tipo && !concluido(i)).length;
-    const on = catAtivas.length === 1 && catAtivas[0] === 'sem';
-    return '<button type="button" class="sb-item" data-act="filtrar-cat" data-cat="sem" aria-pressed="' + on + '" data-tip="Filtrar: Sem categoria" aria-label="Filtrar pelos itens sem categoria">' +
-      '<span class="sb-dot" style="background:var(--text-3)"></span><span class="lbl">Sem categoria</span><span class="sb-count">' + n + '</span></button>';
-  })();
-  const projs = projetos().filter(p => p.secao === 'projetos' && !concluido(p)).map(function(p){
-    const pr = progresso(p), parado = semProxima(p);
-    return '<button type="button" class="sb-item" data-act="abrir-projeto" data-id="' + p.id + '"' + (r.view === 'projetos' && r.id === p.id ? ' aria-current="page"' : '') + ' data-tip="' + esc(p.titulo) + (parado ? ' · sem próxima ação' : '') + '" aria-label="Projeto ' + esc(p.titulo) + (parado ? ', sem próxima ação' : '') + '">' +
-      ic('folder',16) + '<span class="lbl">' + esc(p.titulo) + '</span>' + (parado ? '<span class="sb-alerta" aria-hidden="true">' + ic('alert',14) + '</span>' : '') + '<span class="sb-count">' + pr.feitas + '/' + pr.total + '</span></button>';
+  // categorias (grupos de projetos): a seta mostra os projetos ativos; soltar um card na categoria move-o para ela
+  const abertas = state.prefs.catsAbertas || [];
+  const cats = categorias().concat([{id:'sem', nome:'Sem categoria', cor:null}]).map(function(cat){
+    const projs = projetosDaCategoria(cat.id).filter(p => !concluido(p));
+    const aberta = abertas.indexOf(cat.id) !== -1 && projs.length > 0;
+    const atual = r.view === 'categoria' && r.id === cat.id;
+    let h = '<div class="sb-cat" data-drop="1" data-drop-kind="cat-destino" data-drop-col="' + esc(cat.id) + '">' +
+      '<button type="button" class="sb-exp" data-act="tog-cat-sb" data-cat="' + esc(cat.id) + '" aria-expanded="' + aberta + '"' + (projs.length ? '' : ' disabled') +
+        ' aria-label="' + (aberta ? 'Recolher' : 'Mostrar') + ' os projetos de ' + esc(cat.nome) + '">' + ic(aberta ? 'chevD' : 'chevR', 14) + '</button>' +
+      '<button type="button" class="sb-item" data-act="nav-cat" data-cat="' + esc(cat.id) + '"' + (atual ? ' aria-current="page"' : '') + ' data-tip="' + esc(cat.nome) + '" aria-label="Categoria ' + esc(cat.nome) + ', ' + projs.length + ' projeto(s) ativo(s)">' +
+        '<span class="sb-dot" style="background:' + (cat.cor ? esc(cat.cor) : 'var(--text-3)') + '"></span><span class="lbl">' + esc(cat.nome) + '</span><span class="sb-count">' + projs.length + '</span></button></div>';
+    if(aberta) h += '<div class="sb-sub" role="group" aria-label="Projetos de ' + esc(cat.nome) + '">' + projs.map(function(p){
+      const pr = progresso(p), parado = semProxima(p);
+      return '<button type="button" class="sb-item" data-act="abrir-projeto" data-id="' + p.id + '" data-drop="1" data-drop-kind="projeto" data-drop-col="' + p.id + '"' + (r.view === 'projetos' && r.id === p.id ? ' aria-current="page"' : '') +
+        ' data-tip="' + esc(p.titulo) + (parado ? ' · sem próxima ação' : '') + '" aria-label="Projeto ' + esc(p.titulo) + (parado ? ', sem próxima ação' : '') + '">' +
+        ic('folder',15) + '<span class="lbl">' + esc(p.titulo) + '</span>' + (parado ? '<span class="sb-alerta" aria-hidden="true">' + ic('alert',14) + '</span>' : '') + '<span class="sb-count">' + pr.feitas + '/' + pr.total + '</span></button>';
+    }).join('') + '</div>';
+    return h;
   }).join('');
   const paginas = ['revisao','concluidos','lixeira'].map(function(k){
     const n = k === 'revisao' ? c.revisao : k === 'lixeira' ? c.lixeira : 0;
@@ -3507,8 +3712,7 @@ function renderSidebar(){
     '<button type="button" class="sb-new" data-act="captura" data-tip="Novo item (N)" aria-label="Novo item">' + ic('plus',17) + '<span class="lbl">Novo item</span></button>' +
     '<div class="sb-scroll"><nav aria-label="Seções">' + nav + '</nav>' +
       '<div class="sb-sec">Organizar</div><div class="sb-sec-line"></div><nav aria-label="Organizar">' + paginas + '</nav>' +
-      (cats ? '<div class="sb-sec">Categorias</div><div class="sb-sec-line"></div><nav aria-label="Categorias">' + cats + '</nav>' : '') +
-      (projs ? '<div class="sb-sec">Projetos ativos</div><div class="sb-sec-line"></div><nav aria-label="Projetos ativos">' + projs + '</nav>' : '') +
+      '<div class="sb-sec">Categorias</div><div class="sb-sec-line"></div><nav aria-label="Categorias">' + cats + '</nav>' +
     '</div>' +
     '<div class="sb-foot">' +
       '<button type="button" class="sb-item" data-act="nav" data-view="estrutura"' + (r.view === 'estrutura' ? ' aria-current="page"' : '') + ' data-tip="Estrutura" aria-label="Estrutura">' + ic('structure',18) + '<span class="lbl">Estrutura</span></button>' +
@@ -3521,7 +3725,7 @@ function renderSidebar(){
 function renderBottombar(){
   const c = contadores(), r = state.ui.rota;
   const naMais = ['revisao','concluidos','lixeira','estrutura','config'].indexOf(r.view) !== -1;
-  $('#bottombar').innerHTML = MENU.map(k =>
+  $('#bottombar').innerHTML = menuOrdem().map(k =>
     '<button type="button" class="bb-item" data-act="nav" data-view="' + k + '"' + (r.view === k ? ' aria-current="page"' : '') + ' aria-label="' + SECOES[k].nome + (c[k] ? ', ' + c[k] + ' itens' : '') + '">' +
     '<span class="bb-ic">' + ic(SECOES[k].icone, 21) + '</span><span class="bb-lbl">' + SECOES[k].nome + '</span>' + (c[k] ? '<span class="bb-badge" aria-hidden="true">' + (c[k] > 99 ? '99+' : c[k]) + '</span>' : '') + '</button>').join('') +
     // "Mais": Revisão, Concluídos, Lixeira, Estrutura e Configurações (no celular não há menu lateral)
@@ -3535,7 +3739,12 @@ function sheetMais(){
     const x = n[k];
     return '<button type="button" class="mais-item" data-act="nav" data-view="' + k + '"' + (r.view === k ? ' aria-current="page"' : '') + '>' + ic(PAGINAS[k].icone, 20) +
       '<span class="t">' + esc(PAGINAS[k].nome) + '<small>' + esc(PAGINAS[k].dica) + '</small></span>' + (x && x[0] ? '<span class="n ' + x[1] + '">' + x[0] + '</span>' : '') + '</button>';
-  }).join('') + '<div class="divider"></div>' + (function(){
+  }).join('') + '<div class="divider"></div><div class="sect-t" style="margin:4px 6px">Categorias</div>' +
+    categorias().concat([{id:'sem', nome:'Sem categoria', cor:null}]).map(function(cat){
+      const n = projetosDaCategoria(cat.id).filter(p => !concluido(p)).length;
+      return '<button type="button" class="mais-item" data-act="nav-cat" data-cat="' + esc(cat.id) + '"' + (r.view === 'categoria' && r.id === cat.id ? ' aria-current="page"' : '') + '>' +
+        '<span class="mais-dot" style="background:' + (cat.cor ? esc(cat.cor) : 'var(--text-3)') + '"></span><span class="t">' + esc(cat.nome) + '<small>' + n + (n === 1 ? ' projeto ativo' : ' projetos ativos') + '</small></span></button>';
+    }).join('') + '<div class="divider"></div>' + (function(){
     const s = nuvemSessao();
     return s
       ? '<button type="button" class="mais-item" data-act="nuvem-sair">' + ic('logout', 20) + '<span class="t">Sair<small>Conectado como ' + esc(s.email || '') + '</small></span></button>'
@@ -3548,6 +3757,7 @@ const ORDENS = {
   entrada:[['criacao-desc','Data de criação (recentes)'],['criacao-asc','Data de criação (antigos)'],['titulo-asc','Título'],['categoria-asc','Categoria']],
   projetos:[['entrega-asc','Data de Entrega'],['lemb-asc','Data Lembrete'],['titulo-asc','Título'],['progresso-desc','Progresso'],['atualizacao-desc','Última atualização']],
   tarefas:[['entrega-asc','Data de Entrega'],['lemb-asc','Data Lembrete'],['titulo-asc','Título'],['criacao-desc','Data de criação'],['atualizacao-desc','Última atualização']],
+  categoria:[['entrega-asc','Data de Entrega'],['lemb-asc','Data Lembrete'],['titulo-asc','Título'],['progresso-desc','Progresso'],['atualizacao-desc','Última atualização']],
   projeto:[['entrega-asc','Data de Entrega (vence primeiro)'],['status-asc','Status'],['lemb-asc','Data Lembrete'],['titulo-asc','Título']]
 };
 /** Ordens da seção, com "Personalizada" quando já existe uma ordem arrastada no Foco. */
@@ -3580,6 +3790,7 @@ function optsFerramentas(sec){
   if(sec === 'projeto') return {filtros:false};   // "Ver concluídos" fica ao lado de "Tarefas do projeto"
   if(sec === 'entrada') return state.prefs.entrada.aba === 'futuro' ? {visao:false, agruparFuturo:true} : {visao:false, filtros:false, ordem:false};
   if(sec === 'projetos') return {agrupar: state.prefs.projetos.visao === 'lista', concluidos:true};
+  if(sec === 'categoria') return {filtros:false, concluidos:true};
   if(sec === 'tarefas') return {agrupar:true, concluidos:true};
   return {};
 }
@@ -3657,6 +3868,12 @@ function renderTopbar(){
       '<button type="button" class="' + (p.aba === 'futuro' ? 'on' : '') + '" aria-pressed="' + (p.aba === 'futuro') + '" data-act="aba-entrada" data-v="futuro">' + ic('archive',15) + 'Futuro <span class="cnt">' + c.futuro + '</span></button></div>' +
       (ehCelular() ? '' : '<button type="button" class="btn prim" data-act="captura">' + ic('plus',15) + 'Capturar</button>') + ferramentas('entrada');
     if(p.aba === 'futuro') chips = chipsFiltros('entrada');
+  }else if(r.view === 'categoria'){
+    const cat = r.id === 'sem' ? null : getCat(r.id);
+    const n = projetosDaCategoria(r.id).filter(p => !concluido(p)).length;
+    titulo = cat ? cat.nome : 'Sem categoria';
+    sub = 'Categoria · ' + n + (n === 1 ? ' projeto ativo' : ' projetos ativos');
+    tools = ferramentas('categoria');
   }else if(r.view === 'hoje'){
     sub = c.hoje + (c.hoje === 1 ? ' item' : ' itens');
     tools = ferramentas('hoje');
@@ -3855,6 +4072,7 @@ const btnLimparBusca = () => '<button type="button" class="btn" data-act="limpar
 function viewHTML(){
   const r = state.ui.rota;
   if(r.view === 'projetos' && r.id) return viewProjeto(r.id);
+  if(r.view === 'categoria') return viewCategoria(r.id);
   return ({entrada:viewEntrada, hoje:viewHoje, projetos:viewProjetos, tarefas:viewTarefas, revisao:viewRevisao, concluidos:viewConcluidos, lixeira:viewLixeira, config:viewConfig, estrutura:viewEstrutura}[r.view] || viewHoje)();
 }
 
@@ -3956,6 +4174,23 @@ function viewProjetos(){
   return listaHTML('projetos', {grupos}, {podeAdicionar: () => true});
 }
 
+/* ---------- PÁGINA DA CATEGORIA (os projetos dela; categoria é um grupo de projetos) ---------- */
+function projetosDaCategoria(cid){ return items().filter(i => i.tipo === 'projeto' && i.secao === 'projetos' && (i.categoriaId || 'sem') === cid); }
+function viewCategoria(cid){
+  if(!cid || (cid !== 'sem' && !getCat(cid))) return vazio('alert', 'Categoria não encontrada', 'Ela pode ter sido excluída.', '<button type="button" class="btn" data-act="nav" data-view="projetos">Ir para Projetos</button>');
+  const p = state.prefs.categoria;
+  const lista = ordenar(filtraConcluidos(filtraBusca(projetosDaCategoria(cid)), 'categoria'), p.ordem, ctxOrdem('categoria'));
+  const soltas = ordenar(filtraConcluidos(filtraBusca(items().filter(i => i.tipo === 'tarefa' && i.secao === 'tarefas' && !i.projetoId && !ehLembrete(i) && (i.categoriaId || 'sem') === cid)), 'categoria'), 'entrega-asc');
+  let corpo;
+  if(p.visao === 'foco') corpo = focoHTML('categoria', lista, {placeholder:'Adicionar projeto', vazio:'Nenhum projeto aberto nesta categoria.'});
+  else if(!lista.length) corpo = vazio('folder', state.ui.busca.trim().length >= 2 ? 'Nenhum projeto com essa busca' : 'Nenhum projeto nesta categoria',
+    'Categorias agrupam projetos; os projetos agrupam tarefas.', '<button type="button" class="btn prim" data-act="novo-projeto" data-cat="' + esc(cid) + '">' + ic('plus',15) + 'Criar projeto</button>');
+  else if(p.visao === 'kanban') corpo = kanbanHTML('categoria', listaStatus('projeto').map(s => ({chave:s.id, nome:s.nome, cor:s.cor, itens:lista.filter(i => i.status === s.id)})), {dropKind:'status-projeto', statusTipo:'projeto'});
+  else corpo = listaHTML('categoria', {itens:lista}, {addFlat:true});
+  const avulsas = soltas.length ? '<div style="margin-top:18px">' + grupo('categoria', 'avulsas', 'Tarefas sem projeto', '<div class="cards">' + soltas.map(it => cardHTML(it, {layout:'lista', arrastavel:true})).join('') + '</div>', soltas.length) + '</div>' : '';
+  return corpo + avulsas;
+}
+
 /* ---------- PÁGINA DO PROJETO ---------- */
 function avisoDatas(it){
   if(it.dataLembrete && it.dataEntrega && it.dataLembrete > it.dataEntrega && !ehLembrete(it))
@@ -4055,6 +4290,7 @@ function escopoConcluidos(sec){
   if(sec === 'projetos') return {tipo:'projeto', de:'projetos'};
   if(sec === 'tarefas') return {tipo:'tarefa', de:'tarefas'};
   if(sec === 'projeto') return {projeto:state.ui.rota.id};
+  if(sec === 'categoria') return {tipo:'projeto', categoria:state.ui.rota.id};
   return {};
 }
 function itensConcluidos(q){
@@ -4062,6 +4298,7 @@ function itensConcluidos(q){
   return items().filter(function(it){
     if(!concluido(it)) return false;
     if(q.projeto) return it.projetoId === q.projeto;
+    if(q.categoria) return it.tipo === 'projeto' && it.secao === 'projetos' && (it.categoriaId || 'sem') === q.categoria;
     if(q.tipo === 'projeto') return it.tipo === 'projeto';
     if(q.tipo === 'tarefa') return it.tipo === 'tarefa' && !ehLembrete(it);
     if(q.tipo === 'lembrete') return ehLembrete(it);
@@ -4200,7 +4437,7 @@ function viewConfig(){
       '<div class="row-between"><span>Novo item</span><span class="kbd">N</span></div>' +
       '<div class="row-between"><span>Buscar</span><span class="kbd">/</span></div>' +
       '<div class="row-between"><span>Fechar painéis e editores</span><span class="kbd">Esc</span></div>' +
-      '<div class="row-between"><span>Entrada · Hoje · Projetos · Tarefas</span><span><span class="kbd">1</span> <span class="kbd">2</span> <span class="kbd">3</span> <span class="kbd">4</span></span></div>' +
+      '<div class="row-between"><span>' + menuOrdem().map(k => SECOES[k].nome).join(' · ') + '</span><span><span class="kbd">1</span> <span class="kbd">2</span> <span class="kbd">3</span> <span class="kbd">4</span></span></div>' +
     '</div></section></div>';
 }
 
@@ -4260,9 +4497,15 @@ function editorModelos(){
 }
 function viewEstrutura(){
   const aba = state.ui.estruturaAba;
-  const abas = [['status','Status'],['campos','Campos'],['visoes','Campos visíveis'],['categorias','Categorias'],['modelos','Modelos']];
+  const abas = [['status','Status'],['campos','Campos'],['visoes','Campos visíveis'],['categorias','Categorias'],['menu','Menu'],['modelos','Modelos']];
   let corpo = '';
-  if(aba === 'categorias'){
+  if(aba === 'menu'){
+    corpo = '<section class="ebox"><h3>Ordem do menu</h3><span class="muted">Vale para o menu lateral, a barra inferior do celular e os atalhos de teclado 1 a 4.</span>' +
+      '<div style="margin-top:10px" data-sort-list="menu" data-sort-axis="y">' + menuOrdem().map((k, i) =>
+        '<div class="erow" data-sort-key="' + k + '"><span class="hdl" data-sort-handle title="Arrastar para reordenar">' + ic('grip',16) + '</span>' +
+        '<span class="menu-ic" aria-hidden="true">' + ic(SECOES[k].icone, 16) + '</span><span class="cat-sem-nm" style="color:var(--text)">' + SECOES[k].nome + '</span>' +
+        '<span class="kbd" title="Atalho">' + (i + 1) + '</span>' + setas('menu', k, SECOES[k].nome) + '</div>').join('') + '</div></section>';
+  }else if(aba === 'categorias'){
     corpo = editorCategorias();
   }else if(aba === 'modelos'){
     corpo = editorModelos();
@@ -4375,6 +4618,7 @@ function renderPanel(){
       (it.tipo === 'projeto' && it.secao === 'projetos' ? '<button type="button" class="btn-acao" data-act="abrir-projeto" data-id="' + it.id + '">' + ic('folder',14) + 'Abrir página do projeto</button>' : '') + '</div>';
   }
   corpo += '<div>' + linhasCampos(it) + '</div>' + avisoDatas(it) + blocoLembreteDaOrigem(it);
+  if(it.tipo === 'tarefa' && !ehLembrete(it)) corpo += checklistHTML(it);
   if(proj){
     corpo += '<div class="box-info"><div class="flabel">Projeto</div>' +
       '<button type="button" class="btn-acao" data-act="abrir-projeto" data-id="' + proj.id + '" style="margin-bottom:8px">' + ic('folder',14) + esc(proj.titulo) + ic('arrowR',13) + '</button>' +
@@ -4756,17 +5000,27 @@ function ativarDrag(){
   if(ptr.toque) vibrar(12);
   // celular: zonas de soltar fixas no rodapé com os nomes das colunas (sem depender do auto-scroll lateral)
   const kb = ptr.el.closest('.kanban');
-  if(kb && ehCelular()) montarDropbar(kb, ptr.el.closest('.kcol'));
+  if(ehCelular()) montarDropbar(kb, kb ? ptr.el.closest('.kcol') : null, getItem(ptr.id));
 }
-function montarDropbar(kb, colDoCard){
+/** Celular: barra fixa no rodapé com as colunas do quadro e, abaixo, os destinos (virar projeto/tarefa e categorias). */
+function montarDropbar(kb, colDoCard, it){
+  const zona = (kind, col, rot, cor, cls) => '<div class="dz' + (cls ? ' ' + cls : '') + '" data-drop="1" data-drop-kind="' + esc(kind) + '" data-drop-col="' + esc(col) + '">' +
+    (cor ? '<span class="cdot" style="background:' + esc(cor) + '"></span>' : '') + esc(rot) + '</div>';
+  const cols = kb ? $$('.kcol[data-drop]', kb).map(function(c){
+    const cor = c.querySelector('.kcol-h .cdot');
+    return zona(c.dataset.dropKind, c.dataset.dropCol, c.getAttribute('aria-label') || '', cor ? cor.style.background : '', c === colDoCard ? 'atual' : '');
+  }).join('') : '';
+  let destinos = '';
+  if(it && it.tipo && !ehLembrete(it)){
+    destinos = zona('converter', it.tipo === 'tarefa' ? 'projeto' : 'tarefa', it.tipo === 'tarefa' ? 'Virar projeto' : 'Virar tarefa', '', 'conv') +
+      categorias().filter(c => c.id !== it.categoriaId).map(c => zona('cat-destino', c.id, c.nome, c.cor)).join('') +
+      (it.categoriaId ? zona('cat-destino', 'sem', 'Sem categoria', 'var(--text-3)') : '');
+  }
+  if(!cols && !destinos) return;
   dropbar = document.createElement('div');
   dropbar.className = 'dropbar';
   dropbar.setAttribute('aria-hidden', 'true');
-  dropbar.innerHTML = $$('.kcol[data-drop]', kb).map(function(c){
-    const cor = c.querySelector('.kcol-h .cdot');
-    return '<div class="dz' + (c === colDoCard ? ' atual' : '') + '" data-drop="1" data-drop-kind="' + esc(c.dataset.dropKind) + '" data-drop-col="' + esc(c.dataset.dropCol) + '">' +
-      (cor ? '<span class="cdot" style="background:' + esc(cor.style.background) + '"></span>' : '') + esc(c.getAttribute('aria-label') || '') + '</div>';
-  }).join('');
+  dropbar.innerHTML = (cols ? '<div class="dz-linha">' + cols + '</div>' : '') + (destinos ? '<div class="dz-t">Mover para</div><div class="dz-linha">' + destinos + '</div>' : '');
   document.body.appendChild(dropbar);
 }
 function ativarSort(){
@@ -4903,9 +5157,23 @@ function aplicarDrop(kind, col, id){
     toast(rotuloCurto(campo) + ': ' + (de ? fmtCurta(de) : '—') + ' → ' + fmtCurta(nova) + (emHoje && (nova < iv[0] || nova > iv[1]) ? ' (fora do período filtrado)' : ''));
   }else if(kind === 'projeto'){
     if(ehLembrete(it)){ toast('O projeto de um lembrete segue a origem'); return; }
-    alterar(id, {projetoId: col === 'sem' ? null : col});
+    if(it.tipo !== 'tarefa'){ toast('Só tarefas entram em projetos'); return; }
+    const pid = col === 'sem' ? null : col;
+    if((it.projetoId || null) === pid) return;
+    const snap = snapshot();
+    if(!alterar(id, {projetoId:pid})) return;
+    toast(pid ? '“' + it.titulo + '” agora é de “' + nomeProjeto(pid) + '”' : '“' + it.titulo + '” saiu do projeto', () => restaurar(snap));
   }else if(kind === 'categoria'){
-    alterar(id, {categoriaId: col === 'sem' ? null : col});
+    mudarCategoria(id, col === 'sem' ? null : col);
+    return;
+  }else if(kind === 'cat-destino'){
+    mudarCategoria(id, col === 'sem' ? null : col, {confirmar:true});
+    return;
+  }else if(kind === 'converter'){
+    if(!it.tipo || ehLembrete(it)){ toast(ehLembrete(it) ? 'Lembretes não viram projeto nem tarefa' : 'Faça a triagem do item primeiro'); return; }
+    if(it.tipo === col){ toast('“' + it.titulo + '” já é ' + (col === 'projeto' ? 'um projeto' : 'uma tarefa')); return; }
+    converterTipo(id, {confirmar:true});
+    return;
   }
   const novo = $('[data-drag-id="' + id + '"]');
   if(novo) novo.classList.add('drop-in');
@@ -4931,6 +5199,7 @@ function criarNoFoco(sec, titulo){
   if(!titulo.trim()) return;
   const r = state.ui.rota, base = {titulo:titulo.trim()};
   if(sec === 'projetos') Object.assign(base, {tipo:'projeto', secao:'projetos'});
+  else if(sec === 'categoria') Object.assign(base, heranca('categoria', null));
   else if(sec === 'projeto'){
     const p = getItem(r.id);
     if(!p || concluido(p)){ toast('Projeto concluído não aceita novas tarefas'); return; }
@@ -5165,16 +5434,18 @@ const ACOES = {
   },
   'sub-add': (d, el) => { const i = el.parentElement.querySelector('input'); if(i) criarSubtarefa(d.pid, i.value); },
   'nova-tarefa': () => { const t = criarItem({tipo:'tarefa', secao:'tarefas', titulo:'Nova tarefa', dataEntrega:hojeISO()}); abrirItem(t.id); setTimeout(() => { const i = $('#panel textarea[data-field="titulo"]'); if(i){ i.focus(); i.select(); } }, 280); },
-  'novo-projeto': () => { const p = criarItem({tipo:'projeto', secao:'projetos', titulo:'Novo projeto'}); irPara('#/projetos/' + p.id); },
-  'filtrar-cat': d => {
-    let sec = secaoDaRota();
-    if(sec === 'entrada' && state.prefs.entrada.aba !== 'futuro') sec = null;
-    if(['hoje','projetos','tarefas','entrada'].indexOf(sec) === -1){ sec = 'tarefas'; irPara('#/tarefas'); }
-    const p = state.prefs[sec];
-    p.categorias = p.categorias.length === 1 && p.categorias[0] === d.cat ? [] : [d.cat];
+  'novo-projeto': d => { const p = criarItem({tipo:'projeto', secao:'projetos', titulo:'Novo projeto', categoriaId: d && getCat(d.cat) ? d.cat : null}); irPara('#/projetos/' + p.id); },
+  'nav-cat': d => { fecharSheet(); irPara('#/categoria/' + d.cat); },
+  'tog-cat-sb': d => {
+    const a = state.prefs.catsAbertas, i = a.indexOf(d.cat);
+    if(i === -1) a.push(d.cat); else a.splice(i, 1);
+    state.ui.focar = '[data-act="tog-cat-sb"][data-cat="' + d.cat + '"]';
     persistirPrefs(); render();
-    toast(p.categorias.length ? 'Filtrando por ' + nomeCat(d.cat) : 'Filtro de categoria removido');
   },
+  'chk-tog': d => chkAlternar(d.id, d.k),
+  'chk-menu': (d, el) => abrirMenu(el, [{titulo:(chkItem(d.id, d.k) || {}).texto || 'Item'},
+    {id:'tt', label:'Transformar em tarefa', icone:'checkSq', acao:() => chkVirarTarefa(d.id, d.k)}, '-',
+    {id:'del', label:'Excluir item', icone:'trash', variante:'dngr', acao:() => chkExcluir(d.id, d.k)}]),
   'abrir-busca-mobile': () => sheetBusca(),
   'limpar-busca': () => { state.ui.busca = ''; state.ui.focar = '#buscaInput'; render(); },
   'set-tema': d => { state.prefs.tema = d.v; persistirPrefs(); aplicarTema(); render(); },
@@ -5271,6 +5542,7 @@ document.addEventListener('change', function(e){
     case 'cat-nome': { const c = getCat(d.id); const v = el.value.trim(); if(c && v && v !== c.nome){ c.nome = v; persistir(); render(); toast('Categoria renomeada'); } else if(c) el.value = c.nome; return; }
     case 'status-cor': corStatus(d.tipo, d.sid, el.value); return;
     case 'status-nome': renomearStatus(d.tipo, d.sid, el.value); return;
+    case 'chk-texto': chkTexto(d.id, d.k, el.value); return;
     case 'campo-nome': renomearCampo(d.k, el.value); return;
     case 'campo-opcoes': { const c = campos().find(x => x.id === d.k); if(c){ c.opcoes = el.value.split(',').map(s => s.trim()).filter((s, i, a) => s && a.indexOf(s) === i); persistir(); render(); toast('Opções atualizadas'); } return; }
   }
@@ -5295,7 +5567,7 @@ document.addEventListener('input', function(e){
   if(el.classList && el.classList.contains('inp-title')) autoTam(el);
 });
 document.addEventListener('toggle', function(e){ if(e.target.classList && e.target.classList.contains('mais')) state.ui.maisCampos = e.target.open; }, true);
-const EDITAVEIS_RENOMEAR = ['status-nome','campo-nome','cat-nome','campo-opcoes'];
+const EDITAVEIS_RENOMEAR = ['status-nome','campo-nome','cat-nome','campo-opcoes','chk-texto'];
 document.addEventListener('keydown', function(e){
   const el = e.target;
   const digitando = el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable);
@@ -5327,6 +5599,7 @@ document.addEventListener('keydown', function(e){
     if(el.id === 'focoAdd'){ e.preventDefault(); criarNoFoco(el.dataset.sec, el.value); return; }
     if(el.dataset.act === 'status-add-in'){ e.preventDefault(); state.ui.focar = '[data-act="status-add-in"][data-tipo="' + el.dataset.tipo + '"]'; adicionarStatus(el.dataset.tipo, el.value); return; }
     if(el.dataset.act === 'sub-add-in'){ e.preventDefault(); criarSubtarefa(el.dataset.pid, el.value); return; }
+    if(el.dataset.act === 'chk-add-in'){ e.preventDefault(); chkAdicionar(el.dataset.id, el.value); return; }
     if(el.id === 'novaCat'){ e.preventDefault(); ACOES['cat-add'](); return; }
     // no toque (sem Shift+Enter) o Enter do comentário quebra linha; o envio fica no botão
     if(el.dataset.composer){ if(ehToque()) return; e.preventDefault(); ACOES['enviar-cmt']({id:el.dataset.composer}); return; }
@@ -5338,8 +5611,8 @@ document.addEventListener('keydown', function(e){
   const k = e.key.toLowerCase();
   if(k === 'n'){ e.preventDefault(); sheetCaptura(); return; }
   if(k === '/'){ e.preventDefault(); const b = $('#buscaInput'); if(b && b.offsetParent) b.focus(); else sheetBusca(); return; }
-  const mapa = {'1':'entrada','2':'hoje','3':'projetos','4':'tarefas'};
-  if(mapa[e.key]){ e.preventDefault(); irPara('#/' + mapa[e.key]); }
+  const secao = /^[1-4]$/.test(e.key) ? menuOrdem()[Number(e.key) - 1] : null;   // atalhos seguem a ordem do menu
+  if(secao){ e.preventDefault(); irPara('#/' + secao); }
 });
 /* tooltip */
 document.addEventListener('mouseover', function(e){
@@ -5431,7 +5704,7 @@ function nuvemMeta(){ return Object.assign({uid:null, base:null, pendente:false,
 function nuvemSalvarMeta(m){ gravarJSONLS(LS_NUVEM, m); }
 function nuvemSessao(){ return lerJSONLS(LS_SESSAO); }
 /** Preferências que dependem da tela de cada aparelho e não sincronizam. */
-const PREFS_DO_APARELHO = ['larguras', 'sidebarCompacta', 'sidebarExp', 'dicas'];
+const PREFS_DO_APARELHO = ['larguras', 'sidebarCompacta', 'sidebarExp', 'dicas', 'catsAbertas'];
 function prefsParaNuvem(){
   const p = clone(state.prefs);
   PREFS_DO_APARELHO.forEach(k => delete p[k]);
