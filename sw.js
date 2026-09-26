@@ -1,6 +1,6 @@
 ﻿/* Service worker do Gestor: guarda o app para abrir sem internet.
    Os dados continuam no localStorage do navegador; aqui só ficam os arquivos do app. */
-const CACHE = 'gestor-v6.0';
+const CACHE = 'gestor-v6.1';
 const ARQUIVOS = ['./', './index.html', './manifest.webmanifest', './icons/icon.svg', './icons/icon-192.png',
   './icons/icon-512.png', './icons/icon-maskable-512.png', './icons/apple-touch-icon.png'];
 

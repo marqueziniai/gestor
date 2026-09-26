@@ -2595,7 +2595,10 @@ function aplicarOrdem(chave, ids){
   else if(chave === 'categorias'){ state.dados.categorias = reordena(categorias(), c => c.id); }
   else if(chave.indexOf('checklist:') === 0){ const it = getItem(chave.slice(10)); if(it) it.checklist = reordena(checklist(it), c => c.id); }
   else if(chave === 'menu'){ state.prefs.menu = reordena(menuOrdem(), k => k); persistirPrefs(); render(); return; }
-  else if(chave.indexOf('layout:') === 0 || chave.indexOf('layoutfull:') === 0){ const v = chave.split(':')[1]; estr().layouts[v] = reordena(estr().layouts[v], e => e.id); }
+  else if(chave.indexOf('layout:') === 0 || chave.indexOf('layoutfull:') === 0){
+    const v = chave.split(':')[1]; estr().layouts[v] = reordena(estr().layouts[v], e => e.id);
+    if(v === 'card') estr().campos = reordena(campos(), c => c.id);   // a ordem do card também vale para captura e triagem
+  }
   persistir(); render();
 }
 function moverNaOrdem(chave, id, delta){
@@ -3674,16 +3677,19 @@ function kanbanHTML(sec, cols, ctx){
 
 function corpoLayout(v){
   const L = layout(v);
-  return '<p class="hint" style="margin:0 0 10px">' + ic('info',13) + '<span>Arraste ' + '⠿' + ' ou use as setas para ordenar. O título é sempre visível' + (v === 'card' ? ' e fica no topo do card' : '') + '. Campos que não se aplicam ao tipo do item (ex.: Progresso em tarefas) somem sozinhos.</span></p>' +
+  return '<p class="hint" style="margin:0 0 10px">' + ic('info',13) + '<span>Nome, visibilidade e ordem de cada campo ficam aqui. O nome vale para todas as visões' + (v === 'card' ? '; a ordem do card também vale para os formulários de captura e triagem' : '') +
+    '. Arraste ' + '⠿' + ' ou use as setas para ordenar. O título é sempre visível. Campos que não se aplicam ao tipo do item (ex.: Progresso em tarefas) somem sozinhos.</span></p>' +
     '<div data-sort-list="layoutfull:' + v + '" data-sort-axis="y">' + L.map(function(e){
       const def = campoDef(e.id), trav = e.id === 'titulo', lst = 'layoutfull:' + v;
       return '<div class="erow' + (e.visivel ? '' : ' off') + '" data-sort-key="' + e.id + '">' +
         '<span class="hdl" data-sort-handle title="Arrastar para reordenar">' + ic('grip',16) + '</span>' +
         '<button type="button" class="toggle' + (e.visivel ? ' on' : '') + '" role="switch" aria-checked="' + e.visivel + '" data-act="layout-toggle" data-v="' + v + '" data-k="' + e.id + '" aria-label="Mostrar ' + esc(def.nome) + '"' + (trav ? ' disabled' : '') + '></button>' +
-        '<span style="flex:1;min-width:0;font-size:14px;font-weight:550">' + esc(def.nome) + '</span>' +
-        (def.exibicao ? '<span class="badge">exibição</span>' : !def.sistema ? '<span class="badge">' + esc(TIPOS_CAMPO[def.tipo] || '') + '</span>' : '') +
+        (def.exibicao ? '<span style="flex:1;min-width:0;font-size:14px;font-weight:550">' + esc(def.nome) + '</span>'
+          : '<input class="inp" value="' + esc(def.nome) + '" data-act="campo-nome" data-k="' + e.id + '" aria-label="Nome do campo ' + esc(def.nome) + '">') +
+        (def.exibicao ? '<span class="badge">exibição</span>' : def.ativo === false ? '<span class="badge">desativado</span>' : !def.sistema ? '<span class="badge">' + esc(TIPOS_CAMPO[def.tipo] || '') + '</span>' : '') +
         '<button type="button" class="icon-btn sm" data-act="mover-ordem" data-lista="' + lst + '" data-k="' + e.id + '" data-d="-1" aria-label="Mover ' + esc(def.nome) + ' para cima">' + ic('arrowU',15) + '</button>' +
-        '<button type="button" class="icon-btn sm" data-act="mover-ordem" data-lista="' + lst + '" data-k="' + e.id + '" data-d="1" aria-label="Mover ' + esc(def.nome) + ' para baixo">' + ic('arrowD',15) + '</button></div>';
+        '<button type="button" class="icon-btn sm" data-act="mover-ordem" data-lista="' + lst + '" data-k="' + e.id + '" data-d="1" aria-label="Mover ' + esc(def.nome) + ' para baixo">' + ic('arrowD',15) + '</button>' +
+        (!def.exibicao && !def.travado ? '<button type="button" class="icon-btn sm" data-act="campo-menu" data-k="' + e.id + '" aria-label="Mais opções do campo ' + esc(def.nome) + '">' + ic('more',16) + '</button>' : '') + '</div>';
     }).join('') + '</div>' +
     '<button type="button" class="btn sm" data-act="campo-novo" data-v="' + v + '" style="margin-top:6px">' + ic('plus',14) + 'Novo campo</button>' +
     (v !== 'card' ? '<div class="divider"></div>' + swHTML('Mostrar campos vazios', 'Campos sem valor aparecem como “Sem …” (em vez de agrupados em “+ Campos”); toque para preencher', 'tog-vazios', !!state.prefs.mostrarVazios) : '') +
@@ -4592,21 +4598,6 @@ function editorStatus(tipo){
   '<div class="erow" style="border-style:dashed"><input class="inp" data-act="status-add-in" data-tipo="' + tipo + '" placeholder="Novo status e Enter" aria-label="Novo status de ' + (tipo === 'projeto' ? 'projeto' : 'tarefa') + '">' +
   '<button type="button" class="btn sm" data-act="status-add" data-tipo="' + tipo + '">' + ic('plus',14) + 'Adicionar</button></div>';
 }
-function editorCampos(){
-  return '<div data-sort-list="campos" data-sort-axis="y">' + campos().map(function(c){
-    const off = c.ativo === false;
-    const aplica = c.sistema ? '<span class="muted">' + (c.aplica.length === 2 ? 'Projetos e tarefas' : 'Só tarefas') + '</span>'
-      : ['projeto','tarefa'].map(t => '<button type="button" class="chip clickable' + (c.aplica.indexOf(t) !== -1 ? ' on' : '') + '" data-act="campo-aplica" data-k="' + c.id + '" data-t="' + t + '" aria-pressed="' + (c.aplica.indexOf(t) !== -1) + '">' + (t === 'projeto' ? 'Projetos' : 'Tarefas') + '</button>').join('');
-    const acao = c.travado ? '<span class="badge">essencial</span>'
-      : c.sistema ? '<button type="button" class="btn sm" data-act="campo-excluir" data-k="' + c.id + '">' + (off ? 'Reativar' : 'Desativar') + '</button>'
-      : '<button type="button" class="icon-btn sm" data-act="campo-excluir" data-k="' + c.id + '" aria-label="Excluir campo ' + esc(c.nome) + '">' + ic('trash',15) + '</button>';
-    return '<div class="erow' + (off ? ' off' : '') + '" data-sort-key="' + c.id + '"><span class="hdl" data-sort-handle title="Arrastar para reordenar">' + ic('grip',16) + '</span>' +
-      '<input class="inp" value="' + esc(c.nome) + '" data-act="campo-nome" data-k="' + c.id + '" aria-label="Nome do campo ' + esc(c.nome) + '">' +
-      '<span class="badge">' + esc(c.sistema ? 'sistema' : TIPOS_CAMPO[c.tipo]) + '</span>' + aplica +
-      (c.tipo === 'selecao' ? '<input class="inp" style="flex-basis:100%" value="' + esc((c.opcoes || []).join(', ')) + '" data-act="campo-opcoes" data-k="' + c.id + '" aria-label="Opções de ' + esc(c.nome) + ' (separadas por vírgula)" placeholder="Opções separadas por vírgula">' : '') +
-      setas('campos', c.id, c.nome) + acao + '</div>';
-  }).join('') + '</div><button type="button" class="btn sm" data-act="campo-novo" style="margin-top:4px">' + ic('plus',14) + 'Novo campo</button>';
-}
 /** Modelos: salvar a estrutura atual, aplicar outro modelo, definir o padrão. */
 function editorModelos(){
   const atv = modeloAtivo(), alterada = estruturaAlterada();
@@ -4629,7 +4620,7 @@ function editorModelos(){
 }
 function viewEstrutura(){
   const aba = state.ui.estruturaAba;
-  const abas = [['status','Status'],['campos','Campos'],['visoes','Campos visíveis'],['categorias','Categorias'],['menu','Menu'],['modelos','Modelos']];
+  const abas = [['status','Status'],['visoes','Campos visíveis'],['categorias','Categorias'],['menu','Menu'],['modelos','Modelos']];
   let corpo = '';
   if(aba === 'menu'){
     corpo = '<section class="ebox"><h3>Ordem do menu</h3><span class="muted">Vale para o menu lateral, a barra inferior do celular e os atalhos de teclado 1 a 4.</span>' +
@@ -4646,8 +4637,6 @@ function viewEstrutura(){
       '<section class="ebox"><h3>Status de projetos</h3><span class="muted">Colunas do kanban de Projetos.</span>' + editorStatus('projeto') + '</section>' +
       '<section class="ebox"><h3>Status de tarefas</h3><span class="muted">Colunas do kanban de Tarefas e das tarefas de cada projeto.</span>' + editorStatus('tarefa') + '</section></div>' +
       '<p class="hint">' + ic('info',13) + '<span>Projetos e tarefas têm listas independentes. O status de conclusão (' + ic('flag',11).replace('<svg ','<svg style="display:inline;vertical-align:-1px" ') + ') pode ser renomeado, mas não excluído. Excluir um status pergunta para onde levar os itens dele.</span></p>';
-  }else if(aba === 'campos'){
-    corpo = '<section class="ebox"><h3>Campos de projetos e tarefas</h3><span class="muted">A ordem vale para os formulários de captura e triagem. Campos de sistema podem ser renomeados ou desativados (os dados são preservados); campos criados por você podem ser excluídos.</span>' + editorCampos() + '</section>';
   }else{
     corpo = '<div class="egrid tres">' + [['card','Card (detalhe aberto)'],['kanban','Kanban'],['lista','Lista']].map(v =>
       '<section class="ebox"><h3>' + v[1] + '</h3>' + corpoLayout(v[0]) + '</section>').join('') + '</div>';
@@ -5818,6 +5807,19 @@ const ACOES = {
   'status-excluir': d => excluirStatus(d.tipo, d.sid),
   'status-add': (d, el) => { const i = el.parentElement.querySelector('input'); if(i){ state.ui.focar = '[data-act="status-add-in"][data-tipo="' + d.tipo + '"]'; adicionarStatus(d.tipo, i.value); } },
   'campo-novo': d => sheetNovoCampo(d.v),
+  'campo-menu': (d, el) => {
+    const c = campos().find(x => x.id === d.k); if(!c) return;
+    const itens = [{titulo:c.nome}];
+    if(c.sistema) itens.push({id:'at', label: c.ativo === false ? 'Reativar campo' : 'Desativar campo (dados preservados)', icone: c.ativo === false ? 'restore' : 'x', acao:() => excluirCampo(c.id)});
+    else {
+      itens.push({id:'ap', label:'Vale para projetos', icone:'folder', marcado:c.aplica.indexOf('projeto') !== -1, acao:() => ACOES['campo-aplica']({k:c.id, t:'projeto'})},
+                 {id:'at', label:'Vale para tarefas', icone:'checkSq', marcado:c.aplica.indexOf('tarefa') !== -1, acao:() => ACOES['campo-aplica']({k:c.id, t:'tarefa'})});
+      if(c.tipo === 'selecao') itens.push({id:'op', label:'Editar opções…', icone:'edit', acao:() => popTexto(el, {titulo:'Opções de “' + c.nome + '” (separadas por vírgula)', valor:(c.opcoes || []).join(', '),
+        salvar:v => { c.opcoes = String(v || '').split(',').map(x => x.trim()).filter((x, i, a) => x && a.indexOf(x) === i); persistir(); render(); toast('Opções atualizadas'); }})});
+      itens.push('-', {id:'del', label:'Excluir campo', icone:'trash', variante:'dngr', acao:() => excluirCampo(c.id)});
+    }
+    abrirMenu(el, itens);
+  },
   'campo-excluir': d => excluirCampo(d.k),
   'campo-aplica': d => {
     const c = campos().find(x => x.id === d.k); if(!c) return;
