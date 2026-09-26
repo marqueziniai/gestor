@@ -3906,7 +3906,7 @@ function ferramentas(sec){
   const aberto = state.ui.maisFerr;
   h += '<button type="button" class="btn icon-only' + (aberto ? ' on' : '') + '" data-act="tog-mais-ferr" aria-expanded="' + aberto + '" aria-label="Mais opções de exibição" data-tip="' + (aberto ? 'Menos opções' : 'Mais opções') + '" data-tip-sempre="1">' + ic('gear',16) + '</button>';
   if(aberto){
-    if(!foco && sec !== 'entrada') h += '<button type="button" class="btn" data-act="sheet-layout" data-v="' + visao + '">' + ic('sliders',15) + (visao === 'lista' ? 'Colunas' : 'Campos') + '</button>';
+    if(!foco) h += '<button type="button" class="btn" data-act="sheet-layout" data-v="' + (sec === 'entrada' ? 'entrada' : visao) + '">' + ic('sliders',15) + (sec === 'entrada' ? 'Campos' : visao === 'lista' ? 'Colunas' : 'Campos') + '</button>';
     if(!foco) h += '<button type="button" class="btn' + (state.prefs.mostrarVazios ? ' on' : '') + '" data-act="tog-vazios" aria-pressed="' + !!state.prefs.mostrarVazios + '">' + ic('plus',15) + 'Campos vazios</button>';
     h += '<button type="button" class="btn' + (state.prefs.listaQuebra ? ' on' : '') + '" data-act="tog-quebra" aria-pressed="' + state.prefs.listaQuebra + '">' + ic('wrap',15) + 'Quebrar linhas</button>';
   }
@@ -3926,8 +3926,8 @@ function swHTML(rot, sub, act, on){
 function sheetExibicao(sec){
   abrirSheet({titulo:'Exibição', autofoco:false, rodape:'<button type="button" class="btn prim blk" data-act="fechar-sheet">Pronto</button>', corpoFn:function(){
     const o = optsFerramentas(sec), visao = o.visao === false ? 'lista' : state.prefs[sec].visao;
-    return (sec === 'entrada' ? swHTML('Mostrar campos vazios', 'Campos sem valor aparecem como “Sem …”; toque para preencher', 'tog-vazios', !!state.prefs.mostrarVazios) +
-        '<p class="hint" style="margin:6px 0 10px">' + ic('info',13) + '<span>Os campos dos cards da Entrada ficam em Estrutura → Campos visíveis.</span></p>'
+    return (sec === 'entrada' ? '<button type="button" class="btn blk" data-act="sheet-layout" data-v="entrada">' + ic('sliders',15) + 'Campos da Entrada</button>' +
+        swHTML('Mostrar campos vazios', 'Campos sem valor aparecem como “Sem …”; toque para preencher', 'tog-vazios', !!state.prefs.mostrarVazios)
       : visao === 'foco' ? '<p class="hint" style="margin:0 0 10px">' + ic('info',13) + '<span>No Foco, cada linha mostra só o essencial. Troque para Kanban ou Lista para escolher os campos.</span></p>'
         : '<button type="button" class="btn blk" data-act="sheet-layout" data-v="' + visao + '">' + ic('sliders',15) + rotuloLayout(visao) + '</button>' +
           swHTML('Mostrar campos vazios', 'Campos sem valor aparecem como “Sem …”; toque para preencher', 'tog-vazios', !!state.prefs.mostrarVazios)) +
@@ -3949,7 +3949,7 @@ function corpoOpcoes(sec){
   if(o.agruparFuturo) h += sw('Agrupar por categoria', '', 'toggle-agrup-futuro', p.agrupar === 'categoria');
   h += sw('Quebrar linhas', 'Padrão: nada fica cortado', 'tog-quebra', state.prefs.listaQuebra);
   if(!foco) h += sw('Mostrar campos vazios', 'Campos sem valor aparecem como “Sem …”; toque para preencher', 'tog-vazios', !!state.prefs.mostrarVazios) +
-    (sec === 'entrada' ? '' : '<button type="button" class="btn blk" data-act="sheet-layout" data-v="' + visao + '" style="margin-top:6px">' + ic('sliders',15) + rotuloLayout(visao) + '</button>');
+    '<button type="button" class="btn blk" data-act="sheet-layout" data-v="' + (sec === 'entrada' ? 'entrada' : visao) + '" style="margin-top:6px">' + ic('sliders',15) + (sec === 'entrada' ? 'Campos da Entrada' : rotuloLayout(visao)) + '</button>';
   if(o.concluidos) h += '<div class="sect-t">Concluídos</div>' + sw('Ver concluídos (' + contaConcluidos(sec) + ')', 'Mostra os concluídos aqui mesmo, junto com os abertos', 'tog-concl', !!p.concluidos, ' data-sec="' + sec + '"');
   return h;
 }
