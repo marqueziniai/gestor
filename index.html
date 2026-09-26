@@ -473,6 +473,7 @@ html.quebra .sb-item{align-items:center;line-height:1.3;padding-top:9px;padding-
 .dropbar .dz-t{width:100%;font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);padding:2px 4px 0}
 .dropbar .dz.conv{border-color:var(--accent);color:var(--accent);font-weight:600}
 body:has(.dropbar) .fab{visibility:hidden}   /* o + não cobre os destinos durante o arraste */
+.lrow[data-drag-id]{-webkit-user-select:none;user-select:none}   /* arrastar a linha não seleciona texto */
 /* checklist da tarefa */
 .chk-barra{height:4px;border-radius:99px;background:var(--surface-3);overflow:hidden;margin:2px 0 8px}
 .chk-barra i{display:block;height:100%;background:var(--ok);border-radius:inherit;transition:width var(--t)}
@@ -2731,7 +2732,7 @@ function fecharPainel(){
 
 /* --- Botão/gesto "voltar": sheets, menus e popovers entram no histórico e fecham com ele ---
    extra = entradas empilhadas por camadas abertas; pend = "voltar" em andamento; depois = navegação à espera. */
-const hist = {extra:0, pend:0, depois:null, agendado:false};
+const hist = {extra:0, pend:0, depois:null, agendado:false, popEm:0};
 function camadasAbertas(){ return (sheetAtual ? 1 : 0) + (popAtual ? 1 : 0) + (menuAtual ? 1 : 0); }
 /** Chamada sempre que uma camada abre ou fecha: acerta o histórico no fim do evento (abrir+fechar juntos se anulam). */
 function agendarHist(){
@@ -2757,6 +2758,7 @@ function quandoHistLivre(fn){
   agendarHist();
 }
 function aoPopState(){
+  if(!hist.pend && !hist.extra) hist.popEm = Date.now();   // "voltar"/"avançar" entre telas (a rolagem é restaurada em aoMudarHash)
   if(hist.pend){ hist.extra -= hist.pend; hist.pend = 0; reconciliarHist(); return; }
   if(hist.extra > 0){                                    // "voltar" do sistema com uma camada aberta: fecha a de cima
     hist.extra--;
@@ -4701,10 +4703,16 @@ function editarRasc(anchor, r, cid, tipo, redesenhar){
   const pronto = () => { redesenhar(); const b = anchor.ownerDocument && $('[data-rc="' + cid + '"]'); if(b) b.focus({preventScroll:true}); };
   const set = v => { if(c && !c.sistema) r.extras[cid] = v; else r[cid] = v; pronto(); };
   if(cid === 'status') return abrirMenu(anchor, [{titulo:'Status'}].concat(listaStatus(tipo).filter(s => !s.final).map(s => ({id:s.id, label:s.nome, cor:s.cor, marcado:r.status === s.id, acao:() => { r.status = s.id; pronto(); }}))));
-  if(cid === 'categoriaId') return abrirMenu(anchor, [{titulo:c.nome}, {id:'sem', label:'Sem categoria', marcado:!r.categoriaId, acao:() => set(null)}]
-    .concat(categorias().map(x => ({id:x.id, label:x.nome, cor:x.cor, marcado:r.categoriaId === x.id, acao:() => set(x.id)}))));
+  // a categoria é do projeto: escolher um projeto traz a categoria dele; outra categoria tira a tarefa do projeto (com aviso)
+  const setCat = v => {
+    const p = r.projetoId ? getItem(r.projetoId) : null;
+    if(p && (p.categoriaId || null) !== v){ r.projetoId = null; toast('A tarefa saiu de “' + p.titulo + '”: tarefas de um projeto ficam na categoria dele'); }
+    set(v);
+  };
+  if(cid === 'categoriaId') return abrirMenu(anchor, [{titulo:c.nome}].concat(categorias().map(x => ({id:x.id, label:x.nome, cor:x.cor, marcado:r.categoriaId === x.id, acao:() => setCat(x.id)})))
+    .concat([{id:'sem', label:'Sem categoria', marcado:!r.categoriaId, acao:() => setCat(null)}]));
   if(cid === 'projetoId') return abrirMenu(anchor, [{titulo:c.nome}, {id:'sem', label:'Sem projeto', marcado:!r.projetoId, acao:() => set(null)}]
-    .concat(projetosVinculaveis().map(p => ({id:p.id, label:p.titulo, icone:'folder', marcado:r.projetoId === p.id, acao:() => { if(!r.categoriaId && p.categoriaId) r.categoriaId = p.categoriaId; set(p.id); }}))));
+    .concat(projetosVinculaveis().map(p => ({id:p.id, label:p.titulo, icone:'folder', marcado:r.projetoId === p.id, acao:() => { r.categoriaId = p.categoriaId || null; set(p.id); }}))));
   if(c.tipo === 'data') return abrirDatePicker(anchor, {titulo:c.nome, valor:valorRasc(r, c), rec:c.sistema ? r.recorrencia[cid] : null,
     escolher:v => set(v),
     recorrer: c.sistema ? (rg => { r.recorrencia[cid] = rg; if(rg && !r[cid]) r[cid] = hojeISO(); redesenhar(); }) : undefined,
@@ -6017,6 +6025,7 @@ document.addEventListener('click', function(e){
   nuvemFetch('/auth/v1/recover?redirect_to=' + encodeURIComponent(location.origin + location.pathname),
     {method:'POST', headers:{apikey:NUVEM_CHAVE, 'Content-Type':'application/json'}, body:JSON.stringify({email})}
   ).then(function(){
+    gravarJSONLS(LS_RECUPERACAO, {email:email.toLowerCase(), em:Date.now()});   // o link que voltar para esta conta é aceito sem pergunta extra
     toast('Se esse e-mail tiver conta, chega um link para criar uma senha nova. Confira também o spam.', null, {label:'OK', fn(){}});
   }).catch(function(err){
     toast(err.message === 'offline' ? 'Sem conexão com a internet'
@@ -6098,17 +6107,36 @@ function nuvemTratarRetorno(){
     return true;
   }
   nuvem.pausada = r.tipo === 'recovery';
-  nuvemFetch('/auth/v1/user', {headers:{apikey:NUVEM_CHAVE, Authorization:'Bearer ' + r.access_token}}).then(function(user){
-    return nuvemAbrirSessao({access_token:r.access_token, refresh_token:r.refresh_token, expires_in:r.expires_in, expires_at:r.expires_at, user}, null, nuvem.pausada);
-  }).then(function(){
-    render();
-    if(nuvem.pausada) abrirNovaSenha(true);
+  const auth = {apikey:NUVEM_CHAVE, Authorization:'Bearer ' + r.access_token};
+  nuvemFetch('/auth/v1/user', {headers:auth}).then(function(user){
+    // Um link com tokens de OUTRA conta (enviado por alguém) faria este aparelho entrar nela e enviar os dados locais para lá.
+    // Sem um pedido de "Esqueci a senha" feito aqui para o mesmo e-mail, a pessoa confirma a conta antes de entrar.
+    const pedido = lerJSONLS(LS_RECUPERACAO);
+    const pedidoAqui = pedido && user && pedido.email === String(user.email || '').toLowerCase() && Date.now() - pedido.em < 24 * 3600000;
+    const confirmar = pedidoAqui ? Promise.resolve('ok') : abrirConfirm({titulo:'Entrar pelo link do e-mail',
+      texto:'Este link entra na conta ' + (user && user.email || 'desconhecida') + '. Continue só se foi você quem pediu “Esqueci a senha” para esse e-mail. Na dúvida, cancele.',
+      opcoes:[{label:'Entrar nesta conta', valor:'ok', variante:'prim'}, {label:'Cancelar', valor:null}]});
+    return confirmar.then(function(ok){
+      if(ok !== 'ok'){
+        fetch(NUVEM_URL + '/auth/v1/logout', {method:'POST', headers:auth}).catch(() => {});
+        nuvem.pausada = false;
+        toast('Link ignorado. Nada foi alterado neste aparelho.');
+        if(!nuvemSessao()) mostrarBoasVindas();
+        return;
+      }
+      gravarJSONLS(LS_RECUPERACAO, null);
+      return nuvemAbrirSessao({access_token:r.access_token, refresh_token:r.refresh_token, expires_in:r.expires_in, expires_at:r.expires_at, user}, null, nuvem.pausada).then(function(){
+        render();
+        if(nuvem.pausada) abrirNovaSenha(true);
+      });
+    });
   }).catch(function(err){
     nuvem.pausada = false;
     toast(err.message === 'offline' ? 'Sem conexão com a internet. Abra o link do e-mail de novo quando a internet voltar.' : 'O link do e-mail não funcionou. Peça outro em “Esqueci a senha”.');
   });
   return true;
 }
+const LS_RECUPERACAO = 'gestor.recuperacao';
 
 /* --- Boas-vindas: primeira abertura num aparelho sem login --- */
 const LS_BOAS_VINDAS = 'gestor.boasVindas';
@@ -6242,16 +6270,25 @@ function render(){
 function aoMudarHash(){
   const antes = state.ui.rota;
   state.ui.rota = parseHash();
-  if(antes.view !== state.ui.rota.view || antes.id !== state.ui.rota.id){
-    state.ui.recemConcluidos.clear(); state.ui.fixadosHoje = {}; state.ui.addCol = null; window.scrollTo(0, 0);
-    $('#topbar').classList.remove('recolhida');
+  const trocouTela = antes.view !== state.ui.rota.view || antes.id !== state.ui.rota.id;
+  // "voltar" devolve cada tela exatamente onde ela estava; ir para uma tela nova começa do topo
+  const voltando = Date.now() - hist.popEm < 400;
+  const guardada = voltando ? rolagemPorTela[chaveTela(state.ui.rota)] : null;
+  if(trocouTela){
+    // a barra superior encolhida muda a altura da página: guarda e devolve os dois juntos
+    rolagemPorTela[chaveTela(antes)] = {y:window.scrollY, recolhida:$('#topbar').classList.contains('recolhida')};
+    state.ui.recemConcluidos.clear(); state.ui.fixadosHoje = {}; state.ui.addCol = null;
+    $('#topbar').classList.toggle('recolhida', !!(guardada && guardada.recolhida));
     if(state.ui.rota.view !== 'concluidos') state.ui.buscaConcl = '';
   }
   if(!state.ui.rota.item) state.ui.painelEmpurrado = false;
   state.ui.editandoCmt = null;
   fecharMenu(true); fecharPop(true); esconderTip();
   render();
+  if(trocouTela) window.scrollTo(0, guardada ? guardada.y : 0);
 }
+const rolagemPorTela = {};
+const chaveTela = r => r.view + '/' + (r.id || '');
 /** Teclado virtual (visualViewport): expõe altura visível e deslocamento para o painel e os sheets. */
 function ajustaTeclado(){
   const vv = window.visualViewport; if(!vv) return;
@@ -6283,6 +6320,7 @@ function boot(){
   aplicarTema();
   window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { if(state.prefs.tema === 'auto') aplicarTema(); });
   nuvemLerRetornoEmail();   // link de recuperação de senha: tira os tokens do endereço antes do roteamento
+  if('scrollRestoration' in history) history.scrollRestoration = 'manual';   // a rolagem de cada tela é restaurada pelo app
   if(!location.hash) history.replaceState(null, '', '#/hoje');
   state.ui.rota = parseHash();
   window.addEventListener('hashchange', aoMudarHash);
@@ -6317,6 +6355,8 @@ function boot(){
     ajustaTeclado();
   }
   ligaRecolherTopbar();
+  // as abas do kanban grudam logo abaixo da barra superior, que encolhe ao rolar: acompanha a altura real dela
+  if('ResizeObserver' in window) new ResizeObserver(() => document.documentElement.style.setProperty('--tb-h', $('#topbar').offsetHeight + 'px')).observe($('#topbar'));
   render();
   registrarServiceWorker();
   nuvemIniciar();
