@@ -479,16 +479,27 @@ body:has(.dropbar) .fab{visibility:hidden}
 /* atualizar: logo clicável e indicador de "puxar para atualizar" */
 button.sb-logo{cursor:pointer;transition:transform var(--t)}
 @media (hover:hover){button.sb-logo:hover{transform:rotate(-8deg) scale(1.05)}}
-.puxa{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));z-index:95;width:40px;height:40px;margin-left:-20px;border-radius:50%;
-  background:var(--surface);border:1px solid var(--border-2);box-shadow:var(--shadow-2);display:grid;place-items:center;color:var(--text-3);
-  transform:translateY(calc(var(--p, 0) * 60px)) scale(calc(.6 + var(--p, 0) * .4));opacity:calc(.3 + var(--p, 0) * .7);transition:opacity 150ms,color 150ms}
-.puxa .puxa-ic{display:grid;transform:rotate(calc(var(--p, 0) * 270deg))}
-.puxa.pronto,.puxa.carregando{color:var(--accent);border-color:var(--accent)}
-.puxa.carregando{transform:translateY(60px);opacity:1;transition:transform 180ms,opacity 150ms}
-.puxa.carregando .puxa-ic{animation:puxaGira .8s linear infinite}
-.puxa.saindo{opacity:0;transform:translateY(0) scale(.6);transition:transform 180ms,opacity 180ms}
-@keyframes puxaGira{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){.puxa.carregando .puxa-ic{animation-duration:2.4s}}
+/* .puxa só se desloca; a bola só muda de tamanho; o ícone só gira; o anel mostra quanto falta */
+.puxa{position:fixed;left:0;right:0;top:calc(4px + env(safe-area-inset-top));z-index:95;display:flex;justify-content:center;pointer-events:none;
+  transform:translateY(calc(var(--p, 0) * 64px));opacity:min(1, calc(var(--p, 0) * 4))}   /* aparece logo no começo e fica opaco */
+.puxa-bola{position:relative;width:52px;height:52px;border-radius:50%;background:var(--surface);box-shadow:var(--shadow-2);display:grid;place-items:center;
+  color:var(--text-2);transform:scale(calc(.72 + var(--p, 0) * .28));will-change:transform}
+.puxa-ic{display:grid;place-items:center;width:24px;height:24px;transform:rotate(calc(var(--p, 0) * 300deg))}
+.puxa-ic svg{display:block}
+.puxa-anel{position:absolute;inset:0;width:52px;height:52px;transform:rotate(-90deg)}
+.puxa-anel circle{fill:none;stroke-width:3;stroke-linecap:round}
+.puxa-anel .trilho{stroke:var(--border)}
+.puxa-anel .arco{stroke:var(--accent);stroke-dasharray:100;stroke-dashoffset:calc(100 - var(--p, 0) * 100)}
+.puxa.pronto .puxa-bola{color:var(--accent)}
+/* ao soltar: a bola fica no lugar, no tamanho cheio, e o anel vira um giro contínuo */
+.puxa.carregando{transform:translateY(64px);opacity:1;transition:transform 200ms cubic-bezier(.2,.8,.25,1)}
+.puxa.carregando .puxa-bola{transform:scale(1);color:var(--accent);transition:transform 200ms cubic-bezier(.2,.8,.25,1)}
+.puxa.carregando .puxa-ic{transform:none}
+.puxa.carregando .puxa-anel{animation:puxaGira .9s linear infinite}
+.puxa.carregando .puxa-anel .arco{stroke-dasharray:30 70;stroke-dashoffset:0}
+.puxa.saindo{opacity:0;transform:translateY(0);transition:transform 180ms ease-in,opacity 180ms ease-in}
+@keyframes puxaGira{from{transform:rotate(-90deg)}to{transform:rotate(270deg)}}
+@media (prefers-reduced-motion:reduce){.puxa.carregando .puxa-anel{animation-duration:2.4s}}
 /* caixas de confirmação: botões grandes, fáceis de tocar */
 .sheet [data-conf]{min-height:52px;font-size:15.5px;font-weight:600}
 /* comportamento de app no toque: sem seleção de texto nem menu de copiar ao pressionar (campos de digitação continuam) */
@@ -6681,7 +6692,9 @@ function indicadorAtualizar(estado, p){
   if(!el){
     el = document.createElement('div'); el.id = 'puxaAtualizar'; el.className = 'puxa';
     el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
-    el.innerHTML = '<span class="puxa-ic">' + ic('refresh', 18) + '</span><span class="sr-only"></span>';
+    // camadas separadas: .puxa desloca, .puxa-bola escala, o anel mostra o progresso e o ícone gira (nada se deforma ao soltar)
+    el.innerHTML = '<div class="puxa-bola"><svg class="puxa-anel" viewBox="0 0 52 52" aria-hidden="true"><circle class="trilho" cx="26" cy="26" r="23"/><circle class="arco" cx="26" cy="26" r="23" pathLength="100"/></svg>' +
+      '<span class="puxa-ic">' + ic('refresh', 24) + '</span></div><span class="sr-only"></span>';
     document.body.appendChild(el);
   }
   el.classList.remove('saindo');
