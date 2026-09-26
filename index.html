@@ -298,6 +298,9 @@ button.prog-wrap[aria-expanded="true"] .chev{transform:rotate(180deg)}
 .subs>.sub{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:var(--r-md);box-shadow:var(--shadow-1)}
 .subs>.sub::before{content:'';position:absolute;left:-16px;top:18px;width:14px;height:2px;background:color-mix(in srgb,var(--accent) 40%,var(--border))}
 .subs .vazio-sub{font-size:12.5px;color:var(--text-3);padding:4px 2px}
+.sub-add{display:flex;align-items:center;gap:6px;color:var(--text-3)}
+.sub-add-in{flex:1;min-width:0;min-height:38px;background:transparent;border:1px dashed var(--border-2);border-radius:var(--r-md);padding:7px 10px;font:inherit;font-size:13.5px;color:var(--text)}
+.sub-add-in:focus{border-style:solid;border-color:var(--accent);background:var(--surface);outline:none}
 /* rascunho do "+ Adicionar" */
 .card.rascunho{border:1.5px dashed var(--accent);box-shadow:0 0 0 3px var(--accent-soft);-webkit-user-select:auto;user-select:auto}
 .card.rascunho .kcol-input{border:none;box-shadow:none;padding:4px 0;font-size:14.5px;font-weight:600;background:transparent}
@@ -570,7 +573,8 @@ body.modo-sel #view .card .c-menu{visibility:hidden}   /* arrastar a linha não 
 .btn.icon-only{padding-left:9px;padding-right:9px}
 .etabs{margin-bottom:14px}
 .egrid{display:grid;gap:16px}
-@media (min-width:1024px){.egrid.tres{grid-template-columns:repeat(3,1fr)}.egrid.dois{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:1024px){.egrid.tres{grid-template-columns:repeat(3,1fr)}.egrid.dois{grid-template-columns:repeat(2,1fr)}.egrid.quatro{grid-template-columns:repeat(2,1fr)}}
+@media (min-width:1400px){.egrid.quatro{grid-template-columns:repeat(4,1fr)}}
 .ebox{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:14px}
 .ebox h3{font-size:14px;font-weight:680;margin-bottom:4px}
 .ebox .muted{display:block;margin-bottom:10px}
@@ -799,7 +803,7 @@ mark{background:color-mix(in srgb,var(--caution) 32%,transparent);color:inherit;
 }
 /* iOS não aproxima a tela ao focar campos com 16px ou mais */
 @media (max-width:767px){
-  .inp,.kcol-input,.inp-inline,.dp-row .inp,.erow .inp,.composer textarea,.tb-search input,.foco-add input,.kcol-h .nm-in,.card.rascunho .kcol-input,.conc-busca .inp,.chk-txt{font-size:16px}
+  .inp,.kcol-input,.inp-inline,.dp-row .inp,.erow .inp,.composer textarea,.tb-search input,.foco-add input,.kcol-h .nm-in,.card.rascunho .kcol-input,.conc-busca .inp,.chk-txt,.sub-add-in{font-size:16px}
   .inp-title,textarea.inp-title{font-size:18px}
 }
 
@@ -1187,7 +1191,8 @@ function estruturaPadrao(){
     layouts:{
       card:   ids(['status','projetoId','categoriaId','dataLembrete','textoLembrete','dataEntrega','descricao','progresso','proximaAcao','ultimaAtualizacao'], ['tipo','comentarios','ultimoComentario']),
       kanban: ids(['tipo','projetoId','titulo','descricao','dataLembrete','dataEntrega','categoriaId','status','progresso','proximaAcao','comentarios'], ['textoLembrete','ultimoComentario','ultimaAtualizacao']),
-      lista:  ids(['tipo','projetoId','titulo','status','categoriaId','dataLembrete','dataEntrega','progresso','proximaAcao'], ['textoLembrete','comentarios','descricao','ultimoComentario','ultimaAtualizacao'])
+      lista:  ids(['tipo','projetoId','titulo','status','categoriaId','dataLembrete','dataEntrega','progresso','proximaAcao'], ['textoLembrete','comentarios','descricao','ultimoComentario','ultimaAtualizacao']),
+      entrada:ids(['tipo','projetoId','titulo','status','categoriaId','dataLembrete','dataEntrega','progresso','proximaAcao'], ['textoLembrete','comentarios','descricao','ultimoComentario','ultimaAtualizacao'])
     }
   };
   function ids(vis, ocultos){ return vis.map(id => ({id, visivel:true})).concat(ocultos.map(id => ({id, visivel:false}))); }
@@ -1350,6 +1355,8 @@ function normalizarDados(){
     d.modeloAtivo = 'mdl-padrao';
   }
   if(!d.modelos.some(m => m.padrao)) d.modelos[0].padrao = true;
+  // modelos salvos antes da v6.2: a Entrada começa com os campos da Lista (como a estrutura em uso)
+  d.modelos.forEach(m => { const L = m.estrutura && m.estrutura.layouts; if(L && !L.entrada && L.lista) L.entrada = clone(L.lista); });
   limparLixeiraAntiga();
   reconciliarTodos();
 }
@@ -1420,8 +1427,9 @@ function normalizarEstrutura(){
   });
   const todos = e.campos.map(c => c.id).concat(CAMPOS_EXIBICAO.map(c => c.id));
   e.layouts = e.layouts || {};
-  ['card','kanban','lista'].forEach(function(v){
-    let L = e.layouts[v] || padrao.layouts[v];
+  LAYOUTS.forEach(function(v){
+    // a Entrada nasce com os campos que a Lista já usava (antes as duas eram uma só)
+    let L = e.layouts[v] || (v === 'entrada' && e.layouts.lista ? clone(e.layouts.lista) : padrao.layouts[v]);
     L = L.filter(x => todos.indexOf(x.id) !== -1);
     const P = padrao.layouts[v];
     todos.forEach(function(id){
@@ -1486,7 +1494,9 @@ function campoAplica(c, it, form){
   if(ehLembrete(it) && (c.id === 'dataEntrega' || c.id === 'textoLembrete' || c.id === 'status')) return false;
   return true;
 }
-function layout(visao){ return estr().layouts[visao].filter(e => campoAtivo(e.id)); }
+/** Conjuntos de campos configuráveis em Estrutura → Campos visíveis. */
+const LAYOUTS = ['card','kanban','lista','entrada'];
+function layout(visao){ return (estr().layouts[visao] || estr().layouts.lista).filter(e => campoAtivo(e.id)); }
 function layoutVisivel(visao){ return layout(visao).filter(e => e.visivel).map(e => e.id); }
 
 /* --- Itens --- */
@@ -2553,7 +2563,7 @@ function renomearCampo(cid, nome){
 function adicionarCampo(def, visivelEm){
   const c = {id:uid('cf'), nome:def.nome.trim(), tipo:def.tipo, aplica:def.aplica.slice(), opcoes:def.opcoes || [], sistema:false};
   campos().push(c);
-  ['card','kanban','lista'].forEach(v => estr().layouts[v].push({id:c.id, visivel: v === 'card' || v === visivelEm}));
+  LAYOUTS.forEach(v => { if(estr().layouts[v]) estr().layouts[v].push({id:c.id, visivel: v === 'card' || v === visivelEm}); });
   persistir(); render();
   toast('Campo “' + c.nome + '” criado');
   return c;
@@ -2573,7 +2583,7 @@ function excluirCampo(cid){
     if(r !== 'ok') return;
     const snap = snapshot();
     estr().campos = campos().filter(x => x.id !== cid);
-    ['card','kanban','lista'].forEach(v => { estr().layouts[v] = estr().layouts[v].filter(e => e.id !== cid); });
+    LAYOUTS.forEach(v => { if(estr().layouts[v]) estr().layouts[v] = estr().layouts[v].filter(e => e.id !== cid); });
     items().forEach(i => { if(i.extras) delete i.extras[cid]; });
     persistir(); render();
     toast('Campo excluído', () => restaurar(snap));
@@ -3446,10 +3456,15 @@ function alertaProxima(p){
 function tarefasDoProjeto(p){
   return ordenar(filtraConcluidos(subtarefas(p.id).filter(t => !ehLembrete(t))), 'entrega-asc');   // da entrega mais próxima à mais distante; sem data no fim
 }
+/** Campo para criar uma tarefa do projeto ali mesmo (Enter cria e mantém o foco para a próxima). */
+function subAddHTML(p){
+  if(concluido(p)) return '';
+  return '<div class="sub-add">' + ic('plus',14) + '<input class="sub-add-in" data-act="sub-add-in" data-pid="' + p.id + '" placeholder="Nova tarefa e Enter" aria-label="Nova tarefa em ' + esc(p.titulo) + '" enterkeyhint="done" autocomplete="off" autocapitalize="sentences"></div>';
+}
 function subsHTML(p){
   const ts = tarefasDoProjeto(p);
   return '<div class="subs" role="group" aria-label="Tarefas de ' + esc(p.titulo) + '">' +
-    (ts.length ? ts.map(t => linhaFoco(t, {semProjeto:true, cls:'sub'})).join('') : '<p class="vazio-sub">Nenhuma tarefa.</p>') + '</div>';
+    (ts.length ? ts.map(t => linhaFoco(t, {semProjeto:true, cls:'sub'})).join('') : '<p class="vazio-sub">Nenhuma tarefa.</p>') + subAddHTML(p) + '</div>';
 }
 /**
  * Linha do modo Foco (também usada nas tarefas expandidas e em Concluídos): concluir, projeto, título, datas e status.
@@ -3584,7 +3599,8 @@ function listaHTML(sec, conteudo, ctx){
     : (ctx.podeAdicionar && ctx.podeAdicionar(col)) || (col === '__todos' && ctx.addFlat) ? '<div class="add-row">' + botaoAdicionar(sec, col, 'add-grupo') + '</div>' : '';
   // colunas que não se aplicam a nenhuma linha desta visão ficam de fora (ex.: Progresso em Tarefas)
   const todosItens = grupos ? grupos.reduce((a, g) => a.concat(g.itens), []) : conteudo.itens;
-  const cols = layoutVisivel('lista').filter(cid => cid === 'titulo' || !todosItens.length || todosItens.some(it => campoAplica(campoDef(cid), it)));
+  const lay = sec === 'entrada' ? 'entrada' : 'lista';   // a Entrada (Futuro) tem campos próprios
+  const cols = layoutVisivel(lay).filter(cid => cid === 'titulo' || !todosItens.length || todosItens.some(it => campoAplica(campoDef(cid), it)));
   const acoesW = ctx.acaoLinha ? 128 : 40;
   const extras = acoesW + cols.length * 10 + 26;
   const util = larguraUtil(), L = state.prefs.larguras || {};
@@ -3602,7 +3618,7 @@ function listaHTML(sec, conteudo, ctx){
   const usarGrade = ehDesktop() && (!quebra || minw <= util);
   const arrasta = SECOES_ARRASTAVEIS.indexOf(sec) !== -1;
   if(!usarGrade){
-    const card = it => cardHTML(it, {layout:'lista', motivo: ctx.motivoFn ? ctx.motivoFn(it) : null, rodape:ctx.rodape, arrastavel:arrasta});
+    const card = it => cardHTML(it, {layout:lay, motivo: ctx.motivoFn ? ctx.motivoFn(it) : null, rodape:ctx.rodape, arrastavel:arrasta});
     const bloco = (its, col, nome) => (its.length ? '<div class="cards">' + its.map(card).join('') + '</div>' : (addAberto(col) ? '' : '<p class="muted" style="padding:4px 6px">' + esc(ctx.vazioGrupo || 'Nada aqui') + '</p>')) + rodapeAdd(col, nome);
     const corpo = grupos ? grupos.map(g => grupo(sec, g.chave, g.nome, bloco(g.itens, g.chave, g.nome), g.itens.length)).join('') : bloco(conteudo.itens, '__todos', 'lista');
     return '<div class="lista-m' + (quebra ? ' quebra' : '') + '">' + corpo + '</div>';
@@ -3630,7 +3646,8 @@ function listaHTML(sec, conteudo, ctx){
     let h = '<div class="lrow' + (sub ? ' sub' : '') + (ehLembrete(it) ? ' lemb' : '') + (concluido(it) ? ' done' : '') + '" data-sel-id="' + it.id + '"' + (arrasta && !sub ? ' data-drag-id="' + it.id + '"' : '') + '>' + cells + '<div class="lcell lacoes">' + acao + btnMenu(it) + '</div></div>';
     if(!sub && it.tipo === 'projeto' && state.ui.expandidos.has(it.id)){
       const ts = tarefasDoProjeto(it);
-      h += ts.length ? ts.map(t => linha(t, true)).join('') : '<div class="lrow sub"><div class="lcell muted">Nenhuma tarefa neste projeto.</div></div>';
+      h += (ts.length ? ts.map(t => linha(t, true)).join('') : '<div class="lrow sub"><div class="lcell muted">Nenhuma tarefa neste projeto.</div></div>') +
+        (concluido(it) ? '' : '<div class="lrow sub"><div class="lcell" style="grid-column:1/-1">' + subAddHTML(it) + '</div></div>');
     }
     return h;
   };
@@ -3699,7 +3716,7 @@ function corpoLayout(v){
       (Object.keys(state.prefs.larguras || {}).length ? '<button type="button" class="btn sm" data-act="larguras-reset" style="margin-top:8px">' + ic('refresh',14) + 'Restaurar larguras das colunas</button>' : '') : '');
 }
 function sheetLayout(v){
-  abrirSheet({titulo:{card:'Campos do card', kanban:'Campos do kanban', lista:'Colunas da lista'}[v], autofoco:false, corpoFn:() => corpoLayout(v),
+  abrirSheet({titulo:{card:'Campos do card', kanban:'Campos do kanban', lista:'Colunas da lista', entrada:'Campos da Entrada'}[v], autofoco:false, corpoFn:() => corpoLayout(v),
     rodape:'<button type="button" class="btn blk" data-act="nav" data-view="estrutura">Estrutura completa</button><button type="button" class="btn prim blk" data-act="fechar-sheet">Pronto</button>'});
 }
 function sheetNovoCampo(visivelEm){
@@ -3889,7 +3906,7 @@ function ferramentas(sec){
   const aberto = state.ui.maisFerr;
   h += '<button type="button" class="btn icon-only' + (aberto ? ' on' : '') + '" data-act="tog-mais-ferr" aria-expanded="' + aberto + '" aria-label="Mais opções de exibição" data-tip="' + (aberto ? 'Menos opções' : 'Mais opções') + '" data-tip-sempre="1">' + ic('gear',16) + '</button>';
   if(aberto){
-    if(!foco) h += '<button type="button" class="btn" data-act="sheet-layout" data-v="' + visao + '">' + ic('sliders',15) + (visao === 'lista' ? 'Colunas' : 'Campos') + '</button>';
+    if(!foco && sec !== 'entrada') h += '<button type="button" class="btn" data-act="sheet-layout" data-v="' + visao + '">' + ic('sliders',15) + (visao === 'lista' ? 'Colunas' : 'Campos') + '</button>';
     if(!foco) h += '<button type="button" class="btn' + (state.prefs.mostrarVazios ? ' on' : '') + '" data-act="tog-vazios" aria-pressed="' + !!state.prefs.mostrarVazios + '">' + ic('plus',15) + 'Campos vazios</button>';
     h += '<button type="button" class="btn' + (state.prefs.listaQuebra ? ' on' : '') + '" data-act="tog-quebra" aria-pressed="' + state.prefs.listaQuebra + '">' + ic('wrap',15) + 'Quebrar linhas</button>';
   }
@@ -3909,7 +3926,9 @@ function swHTML(rot, sub, act, on){
 function sheetExibicao(sec){
   abrirSheet({titulo:'Exibição', autofoco:false, rodape:'<button type="button" class="btn prim blk" data-act="fechar-sheet">Pronto</button>', corpoFn:function(){
     const o = optsFerramentas(sec), visao = o.visao === false ? 'lista' : state.prefs[sec].visao;
-    return (visao === 'foco' ? '<p class="hint" style="margin:0 0 10px">' + ic('info',13) + '<span>No Foco, cada linha mostra só o essencial. Troque para Kanban ou Lista para escolher os campos.</span></p>'
+    return (sec === 'entrada' ? swHTML('Mostrar campos vazios', 'Campos sem valor aparecem como “Sem …”; toque para preencher', 'tog-vazios', !!state.prefs.mostrarVazios) +
+        '<p class="hint" style="margin:6px 0 10px">' + ic('info',13) + '<span>Os campos dos cards da Entrada ficam em Estrutura → Campos visíveis.</span></p>'
+      : visao === 'foco' ? '<p class="hint" style="margin:0 0 10px">' + ic('info',13) + '<span>No Foco, cada linha mostra só o essencial. Troque para Kanban ou Lista para escolher os campos.</span></p>'
         : '<button type="button" class="btn blk" data-act="sheet-layout" data-v="' + visao + '">' + ic('sliders',15) + rotuloLayout(visao) + '</button>' +
           swHTML('Mostrar campos vazios', 'Campos sem valor aparecem como “Sem …”; toque para preencher', 'tog-vazios', !!state.prefs.mostrarVazios)) +
       swHTML('Quebrar linhas', 'Padrão: nada fica cortado', 'tog-quebra', state.prefs.listaQuebra);
@@ -3930,7 +3949,7 @@ function corpoOpcoes(sec){
   if(o.agruparFuturo) h += sw('Agrupar por categoria', '', 'toggle-agrup-futuro', p.agrupar === 'categoria');
   h += sw('Quebrar linhas', 'Padrão: nada fica cortado', 'tog-quebra', state.prefs.listaQuebra);
   if(!foco) h += sw('Mostrar campos vazios', 'Campos sem valor aparecem como “Sem …”; toque para preencher', 'tog-vazios', !!state.prefs.mostrarVazios) +
-    '<button type="button" class="btn blk" data-act="sheet-layout" data-v="' + visao + '" style="margin-top:6px">' + ic('sliders',15) + rotuloLayout(visao) + '</button>';
+    (sec === 'entrada' ? '' : '<button type="button" class="btn blk" data-act="sheet-layout" data-v="' + visao + '" style="margin-top:6px">' + ic('sliders',15) + rotuloLayout(visao) + '</button>');
   if(o.concluidos) h += '<div class="sect-t">Concluídos</div>' + sw('Ver concluídos (' + contaConcluidos(sec) + ')', 'Mostra os concluídos aqui mesmo, junto com os abertos', 'tog-concl', !!p.concluidos, ' data-sec="' + sec + '"');
   return h;
 }
@@ -4196,7 +4215,7 @@ function viewEntrada(){
   const espiar = toque && !state.prefs.dicas.swipe;
   const cards = lista.map((it, i) =>
     '<div class="swipe-wrap"><div class="swipe-bg" aria-hidden="true"><span>' + ic('split',14) + 'Triagem</span><span>Futuro' + ic('archive',14) + '</span></div>' +
-    '<div class="swipe-el' + (espiar && i === 0 ? ' espiar' : '') + '" data-swipe-id="' + it.id + '">' + cardHTML(it, {layout:'lista', topo:'<div class="c-meta">' + ic('clock',12) + 'Capturado ' + esc(tempoRelativo(it.criadoEm)) + '</div>', rodape:rodapeTriagem}) + '</div></div>').join('');
+    '<div class="swipe-el' + (espiar && i === 0 ? ' espiar' : '') + '" data-swipe-id="' + it.id + '">' + cardHTML(it, {layout:'entrada', topo:'<div class="c-meta">' + ic('clock',12) + 'Capturado ' + esc(tempoRelativo(it.criadoEm)) + '</div>', rodape:rodapeTriagem}) + '</div></div>').join('');
   if(espiar){ state.prefs.dicas.swipe = true; persistirPrefs(); }
   return '<p class="hint" style="margin:0 0 10px">' + ic('info',13) + '<span>' + (toque ? 'Deslize o card para a direita para fazer a triagem ou para a esquerda para classificar no Futuro — ou use os botões do card. Dá para desfazer.' : 'Transforme cada item em tarefa ou projeto, classifique no Futuro ou descarte (fica ' + DIAS_LIXEIRA + ' dias na lixeira).') + '</span></p>' +
     '<div class="cards lista-m">' + cards + '</div>';
@@ -4638,7 +4657,7 @@ function viewEstrutura(){
       '<section class="ebox"><h3>Status de tarefas</h3><span class="muted">Colunas do kanban de Tarefas e das tarefas de cada projeto.</span>' + editorStatus('tarefa') + '</section></div>' +
       '<p class="hint">' + ic('info',13) + '<span>Projetos e tarefas têm listas independentes. O status de conclusão (' + ic('flag',11).replace('<svg ','<svg style="display:inline;vertical-align:-1px" ') + ') pode ser renomeado, mas não excluído. Excluir um status pergunta para onde levar os itens dele.</span></p>';
   }else{
-    corpo = '<div class="egrid tres">' + [['card','Card (detalhe aberto)'],['kanban','Kanban'],['lista','Lista']].map(v =>
+    corpo = '<div class="egrid quatro">' + [['card','Card (detalhe aberto)'],['kanban','Kanban'],['lista','Lista'],['entrada','Entrada (triagem e Futuro)']].map(v =>
       '<section class="ebox"><h3>' + v[1] + '</h3>' + corpoLayout(v[0]) + '</section>').join('') + '</div>';
   }
   return '<div class="seg etabs" role="group" aria-label="Seções da estrutura">' + abas.map(a => '<button type="button" class="' + (aba === a[0] ? 'on' : '') + '" aria-pressed="' + (aba === a[0]) + '" data-act="aba-estrutura" data-v="' + a[0] + '">' + a[1] + '</button>').join('') + '</div>' + corpo;
