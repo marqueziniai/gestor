@@ -472,8 +472,44 @@ html.quebra .sb-item{align-items:center;line-height:1.3;padding-top:9px;padding-
 .dropbar .dz-linha .dz{flex:1 1 calc(33% - 6px)}
 .dropbar .dz-t{width:100%;font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);padding:2px 4px 0}
 .dropbar .dz.conv{border-color:var(--accent);color:var(--accent);font-weight:600}
-body:has(.dropbar) .fab{visibility:hidden}   /* o + não cobre os destinos durante o arraste */
-.lrow[data-drag-id]{-webkit-user-select:none;user-select:none}   /* arrastar a linha não seleciona texto */
+body:has(.dropbar) .fab{visibility:hidden}
+/* caixas de confirmação: botões grandes, fáceis de tocar */
+.sheet [data-conf]{min-height:52px;font-size:15.5px;font-weight:600}
+/* comportamento de app no toque: sem seleção de texto nem menu de copiar ao pressionar (campos de digitação continuam) */
+html{-webkit-tap-highlight-color:transparent}
+@media (hover:none) and (pointer:coarse){
+  body{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+  input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+}
+/* atalho de categorias abaixo da barra */
+.tb-cats{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:0 0 8px}
+.tb-cats::-webkit-scrollbar{display:none}
+.tb-cats .chip{flex:none}
+.fc.sem-valor{color:var(--text-3);border-style:dashed;background:transparent}
+.cat-tarefas{margin-top:24px}
+.cat-sec-t{font-size:15px;font-weight:670;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.cat-sec-t .cnt{font-size:12px;color:var(--text-3);font-weight:600}   /* o + não cobre os destinos durante o arraste */
+.lrow[data-drag-id]{-webkit-user-select:none;user-select:none}
+/* seleção múltipla */
+.selbar{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(16px + env(safe-area-inset-bottom));z-index:85;display:flex;align-items:center;gap:6px;
+  background:var(--surface);border:1px solid var(--border-2);box-shadow:var(--shadow-3);border-radius:var(--r-lg);padding:6px 6px 6px 14px;max-width:calc(100vw - 24px)}
+.sel-n{font-size:13.5px;font-weight:650;white-space:nowrap}
+.sel-acoes{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;min-width:0}
+.sel-acoes::-webkit-scrollbar{display:none}
+.sel-btn{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-width:60px;min-height:50px;padding:4px 6px;border-radius:var(--r-md);font-size:11.5px;font-weight:600;color:var(--text-2);flex:none}
+@media (hover:hover){.sel-btn:not(:disabled):hover{background:var(--surface-2);color:var(--text)}}
+.sel-btn:disabled{opacity:.35}
+.sel-btn.dngr{color:var(--danger)}
+@media (max-width:767px){.selbar{left:8px;right:8px;transform:none;max-width:none;bottom:calc(66px + env(safe-area-inset-bottom));padding-left:10px}.sel-n{font-size:12.5px;max-width:74px;white-space:normal;line-height:1.2}}
+body.modo-sel .fab{display:none}
+body.modo-sel #view{padding-bottom:140px}
+body.modo-sel #view [data-sel-id]{cursor:pointer}
+body.modo-sel #view [data-sel-id]:not(.lrow){position:relative}
+body.modo-sel #view .card[data-sel-id]::after{content:"";position:absolute;top:8px;right:8px;width:20px;height:20px;border-radius:6px;border:1.5px solid var(--border-2);background:var(--surface)}
+#view .selecionado{box-shadow:0 0 0 2px var(--accent);background:var(--accent-soft)}
+body.modo-sel #view .card.selecionado::after{background:var(--accent);border-color:var(--accent);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12.5l4.5 4.5L19 7.5'/%3E%3C/svg%3E");background-size:14px;background-position:center;background-repeat:no-repeat}
+body.modo-sel #view .card .c-menu{visibility:hidden}   /* arrastar a linha não seleciona texto */
 /* checklist da tarefa */
 .chk-barra{height:4px;border-radius:99px;background:var(--surface-3);overflow:hidden;margin:2px 0 8px}
 .chk-barra i{display:block;height:100%;background:var(--ok);border-radius:inherit;transition:width var(--t)}
@@ -559,7 +595,7 @@ body:has(.dropbar) .fab{visibility:hidden}   /* o + não cobre os destinos duran
 .sheet.arrastando,.panel.arrastando{transition:none}
 /* menu de ações como sheet no celular */
 .menu-sheet{z-index:90}
-.scrim.menu{z-index:89}
+.scrim.scrim-menu{z-index:89}
 .menu-sheet .sheet-b{padding:6px 8px 10px}
 .menu-sheet .sheet-h{padding-top:6px}
 .menu-sheet button[role="menuitem"]{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:10px 12px;border-radius:var(--r-md);font-size:15px;text-align:left;color:var(--text)}
@@ -854,7 +890,7 @@ mark{background:color-mix(in srgb,var(--caution) 32%,transparent);color:inherit;
 <button class="fab" id="fab" type="button" aria-label="Captura rápida (novo item)"></button>
 <div class="scrim" id="scrim"></div>
 <div class="scrim pop" id="scrimPop"></div>
-<div class="scrim menu" id="scrimMenu"></div>
+<div class="scrim scrim-menu" id="scrimMenu"></div>
 <aside class="panel" id="panel" role="dialog" aria-label="Detalhe do item"></aside>
 <div id="sheetRoot"></div>
 <div id="popRoot"></div>
@@ -1061,6 +1097,7 @@ const ICONES = {
   folder:'<path d="M3 7.5a2 2 0 0 1 2-2h4l2 2.5h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2Z"/>',
   check:'<path d="m4 12.5 5 5 11-11"/>',
   checkSq:'<rect x="3.5" y="3.5" width="17" height="17" rx="3.5"/><path d="m8 12 3 3 5.5-5.5"/>',
+  multi:'<rect x="3" y="8" width="13" height="13" rx="3"/><path d="M8 8V6a3 3 0 0 1 3-3h7a3 3 0 0 1 3 3v7a3 3 0 0 1-3 3h-2"/><path d="m6.5 14.5 2 2 4-4"/>',
   search:'<circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/>',
   filter:'<path d="M3.5 5.5h17l-6.5 7.6v5.6l-4 2v-7.6Z"/>',
   sort:'<path d="M4 7h10M4 12h7M4 17h4"/><path d="M17 5v14M17 19l3-3M17 19l-3-3"/>',
@@ -1164,11 +1201,12 @@ function prefsPadrao(){
   return {
     versao:4, tema:'auto', sidebarCompacta:false, sidebarExp:false, listaQuebra:true, larguras:{}, dicas:{swipe:false},
     entrada:{aba:'triagem', tipos:[], categorias:[], ordem:'criacao-desc', agrupar:'nenhum', colapsados:[]},
-    hoje:{visao:'lista', periodo:'hoje-vencidos', custIni:'', custFim:'', datas:['lemb','entrega'], tipos:['projeto','tarefa','lemb'], categorias:[], ordem:'data-asc', manual:[], colapsados:[]},
+    hoje:{visao:'lista', agrupar:'faixa', periodo:'hoje-vencidos', custIni:'', custFim:'', datas:['lemb','entrega'], tipos:['projeto','tarefa','lemb'], categorias:[], ordem:'data-asc', manual:[], colapsados:[]},
     projetos:{visao:'kanban', agrupar:'status', statusF:[], categorias:[], dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
     tarefas:{visao:'lista', agrupar:'status', vinculo:'todas', lembF:'todas', statusF:[], categorias:[], projetosF:[], dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
     projeto:{visao:'kanban', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
-    categoria:{visao:'kanban', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
+    categoria:{visao:'kanban', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false, statusF:[], dtIni:'', dtFim:''},
+    mostrarVazios:false,
     menu:MENU.slice(), catsAbertas:[]
   };
 }
@@ -1191,7 +1229,7 @@ const state = {
   ui:{
     rota:{view:'hoje', id:null, item:null, q:{}},
     busca:'', buscaConcl:'', feedFiltro:'tudo', addCol:null, editandoCmt:null, rascunhos:{},
-    recemConcluidos:new Set(), maisFerr:false, estruturaAba:'status', maisCampos:false, focar:null,
+    recemConcluidos:new Set(), maisFerr:false, modoSel:false, sel:new Set(), estruturaAba:'status', maisCampos:false, focar:null,
     fixadosHoje:{},          // itens arrastados em Hoje nesta visita: id → campo de data alterado
     expandidos:new Set(),    // projetos com as tarefas abertas abaixo do card/linha
     animarChk:null           // id do item recém-concluído (anima o círculo depois do render)
@@ -1789,19 +1827,26 @@ function definirProxima(pid, tid){
   toast(t ? 'Próxima ação: “' + t.titulo + '”' : 'Projeto sem próxima ação');
 }
 /** Escolher a próxima ação: tarefas abertas do projeto ou uma nova tarefa. */
-function escolherProxima(anchor, pid){
+/** Revisão: depois de escolher a próxima ação, pergunta quando fazer (Data de Entrega). */
+function pedirDataProxima(tid){
+  const t = getItem(tid); if(!t) return;
+  setTimeout(() => abrirDatePicker($('.rev') || $('#view'), {titulo:'Quando fazer “' + t.titulo + '”?', valor:t.dataEntrega, escolher:v => definirData(tid, 'dataEntrega', v)}), 80);
+}
+function escolherProxima(anchor, pid, o){
+  o = o || {};
   const p = getItem(pid); if(!p) return;
   const atual = proximaAcao(p);
   const cands = candidatasProxima(p);
   const itens = [{titulo:'Próxima ação de “' + p.titulo + '”'}]
-    .concat(cands.length ? cands.map(t => ({id:t.id, label:t.titulo, icone:'checkSq', marcado: atual === t, acao:() => definirProxima(pid, t.id)}))
+    .concat(cands.length ? cands.map(t => ({id:t.id, label:t.titulo, icone:'checkSq', marcado: atual === t, acao:() => { definirProxima(pid, t.id); if(o.pedirData) pedirDataProxima(t.id); }}))
                          : [{id:'nada', label:'Nenhuma tarefa aberta no projeto', desabilitado:true}])
     .concat(['-', {id:'nova', label:'Nova tarefa como próxima ação…', icone:'plus', acao:() => popTexto(anchor, {titulo:'Nova próxima ação', valor:'',
       salvar:v => {
         if(!v) return;
         const t = criarItem({tipo:'tarefa', secao:'tarefas', projetoId:pid, titulo:v}, {semRender:true});   // pode já virar a próxima (sugerirProxima)
-        if(proximaAcao(p) !== t) return definirProxima(pid, t.id);
-        persistir(); render(); toast('Próxima ação: “' + t.titulo + '”');
+        if(proximaAcao(p) !== t) definirProxima(pid, t.id);
+        else { persistir(); render(); toast('Próxima ação: “' + t.titulo + '”'); }
+        if(o.pedirData) pedirDataProxima(t.id);
       }})}]);
   if(atual) itens.push({id:'limpar', label:'Desmarcar próxima ação', icone:'x', acao:() => definirProxima(pid, null)});
   abrirMenu(anchor, itens);
@@ -2006,7 +2051,7 @@ function setStatus(id, sid){
   if(ehLembrete(it)){
     if(sid === statusFinal('tarefa').id) return concluirLembrete(id);
     if(concluido(it)) return reabrirLembrete(id);
-    toast('Lembretes não têm status: use Concluir lembrete ou Reagendar'); render(); return;
+    toast('Lembretes ficam em “Para fazer” até serem concluídos. Para mudar a data, use Reagendar.'); render(); return;
   }
   if(sid === statusFinal(it.tipo).id){
     if(it.tipo === 'projeto') return confirmarConclusaoProjeto(it);
@@ -3033,6 +3078,13 @@ function chipVazio(it, cid, modo){
   const txt = modo === 'lista' ? '—' : '+ ' + (ehData(cid) ? rotuloCurto(cid) : nome);
   return '<button type="button" class="fc vazio"' + attrEdit(it, cid) + ' aria-label="Definir ' + esc(nome) + '">' + esc(txt) + '</button>';
 }
+/** "Mostrar campos vazios": cada campo sem valor aparece como "Sem …" e abre a escolha ao tocar. */
+function chipSemValor(it, cid){
+  const nome = nomeCampo(cid), def = campoDef(cid);
+  const txt = ehData(cid) || (def && def.tipo === 'data') ? (ehData(cid) ? rotuloCurto(cid) : nome) + ': sem data'
+    : cid === 'projetoId' ? 'Sem projeto' : cid === 'categoriaId' ? 'Sem categoria' : 'Sem ' + nome.charAt(0).toLowerCase() + nome.slice(1);
+  return '<button type="button" class="fc sem-valor"' + attrEdit(it, cid) + ' aria-label="' + esc(nome) + ': vazio. Definir">' + esc(txt) + '</button>';
+}
 function chipSemData(it, cid){
   return '<button type="button" class="fc sem-data"' + attrEdit(it, cid) + ' aria-label="' + esc(nomeCampo(cid)) + ': sem data. Definir">' + ic('calendar', 12) + '<span class="v">Sem data</span></button>';
 }
@@ -3055,8 +3107,7 @@ function pecaCampo(it, cid, modo){
       if(modo === 'card') return null;
       return {k:'titulo', h:'<button type="button" class="c-title" data-act="abrir-item" data-id="' + it.id + '" aria-label="Abrir ' + esc(rotuloTipo(it).toLowerCase()) + ': ' + esc(it.titulo) + '">' + destaque(it.titulo) + '</button>'};
     case 'tipo': {
-      const h = '<span class="c-tipo' + (ehLembrete(it) ? ' lemb' : '') + '">' + (ehLembrete(it) ? ic('bell', 12) : '') + '<span class="v">' + esc(rotuloTipo(it)) + '</span></span>' +
-        (ehProxima(it) ? ' <span class="c-prox" title="Próxima ação do projeto">' + ic('play', 11) + 'Próxima</span>' : '');
+      const h = '<span class="c-tipo' + (ehLembrete(it) ? ' lemb' : '') + '">' + (ehLembrete(it) ? ic('bell', 12) : '') + '<span class="v">' + esc(rotuloTipo(it)) + '</span></span>';
       return {k: modo === 'card' ? 'chip' : 'meta', h};
     }
     case 'projetoId': {
@@ -3099,8 +3150,7 @@ function pecaCampo(it, cid, modo){
       if(concluido(it) || it.secao !== 'projetos') return null;
       const t = proximaAcao(it);
       if(!t) return {k:'chip', h:'<button type="button" class="fc alerta"' + attrEdit(it, cid) + ' aria-label="Projeto sem próxima ação. Definir">' + ic('alert', 12) + '<span class="v">Sem próxima ação</span></button>'};
-      return {k:'chip', h:'<button type="button" class="fc prox"' + attrEdit(it, cid) + ' aria-label="Próxima ação: ' + esc(t.titulo) + '. Trocar">' + ic('play', 12) +
-        (modo === 'kanban' ? '<span class="rot">Próxima:</span>' : '') + '<span class="v">' + destaque(t.titulo) + '</span></button>'};
+      return null;   // com próxima ação definida nada aparece: só o alerta quando falta
     }
     case 'ultimaAtualizacao': {
       const u = ultimaAtualizacao(it);
@@ -3360,9 +3410,11 @@ function cardHTML(it, ctx){
     corpo += grupoAtual === 'meta' ? '<div class="c-meta">' + buf.join('<span class="c-sep" aria-hidden="true">·</span>') + '</div>' : '<div class="c-chips">' + buf.join('') + '</div>';
     buf = []; grupoAtual = null;
   };
+  const mostrarVazios = !!state.prefs.mostrarVazios;
   layoutVisivel(ctx.layout).forEach(function(cid){
-    if(campoVazio(it, cid)){ vazios.push(cid); return; }
-    const p = pecaCampo(it, cid, 'kanban'); if(!p) return;
+    const vazio = campoVazio(it, cid);
+    if(vazio && !mostrarVazios){ vazios.push(cid); return; }
+    const p = vazio ? {k:'chip', h:chipSemValor(it, cid)} : pecaCampo(it, cid, 'kanban'); if(!p) return;
     if(p.k === 'titulo'){ flush(); corpo += '<div class="c-trow">' + btnConcluir(it) + p.h + '</div>'; return; }
     if(p.k === 'meta' || p.k === 'chip'){ if(grupoAtual !== p.k) flush(); grupoAtual = p.k; buf.push(p.h); }
     else { flush(); corpo += p.h; }
@@ -3379,7 +3431,7 @@ function cardHTML(it, ctx){
   // GTD: projeto sem próxima ação avisa no card mesmo com o campo oculto no layout
   if(semProxima(it) && layoutVisivel(ctx.layout).indexOf('proximaAcao') === -1) corpo += alertaProxima(it);
   const pe = ctx.rodape ? ctx.rodape(it) : '';
-  const art = '<article class="card' + (ehLembrete(it) ? ' lemb' : '') + (concluido(it) ? ' done' : '') + '"' + (ctx.arrastavel ? ' data-drag-id="' + it.id + '"' : '') +
+  const art = '<article class="card' + (ehLembrete(it) ? ' lemb' : '') + (concluido(it) ? ' done' : '') + '" data-sel-id="' + it.id + '"' + (ctx.arrastavel ? ' data-drag-id="' + it.id + '"' : '') +
     ' aria-label="' + esc(rotuloTipo(it) + ': ' + it.titulo) + '">' + linhaMotivo(ctx.motivo, 'c-motivo') + (ctx.topo || '') + corpo +
     (pe ? '<div class="c-foot">' + pe + '</div>' : '') + (pe ? '' : btnMenu(it).replace('class="icon-btn sm"', 'class="icon-btn sm c-menu"')) + '</article>';
   return art + (it.tipo === 'projeto' && state.ui.expandidos.has(it.id) ? subsHTML(it) : '');
@@ -3389,9 +3441,7 @@ function alertaProxima(p){
 }
 /** Tarefas do projeto abertas abaixo do card, ligadas visualmente a ele (a próxima ação primeiro). */
 function tarefasDoProjeto(p){
-  const ts = ordenar(filtraConcluidos(subtarefas(p.id).filter(t => !ehLembrete(t))), 'entrega-asc');
-  const px = proximaAcao(p);
-  return px ? [px].concat(ts.filter(t => t !== px)) : ts;
+  return ordenar(filtraConcluidos(subtarefas(p.id).filter(t => !ehLembrete(t))), 'entrega-asc');   // da entrega mais próxima à mais distante; sem data no fim
 }
 function subsHTML(p){
   const ts = tarefasDoProjeto(p);
@@ -3409,10 +3459,7 @@ function linhaFoco(it, o){
   if(ehLembrete(it)){
     topo = '<div class="fr-proj lemb">' + ic('bell', 12) + '<span class="v">Lembrete' + (proj && !o.semProjeto ? ' · ' + esc(proj.titulo) : '') + '</span></div>';
   }else if(proj && !o.semProjeto){
-    topo = '<div class="fr-proj"><button type="button" class="c-proj" data-edit="projetoId" data-id="' + it.id + '" aria-label="Projeto: ' + esc(proj.titulo) + '. Alterar">' + ic('folder', 12) + '<span class="v">' + destaque(proj.titulo) + '</span></button>' +
-      (ehProxima(it) ? '<span class="c-prox" title="Próxima ação do projeto">' + ic('play', 11) + 'Próxima</span>' : '') + '</div>';
-  }else if(ehProxima(it)){
-    topo = '<div class="fr-proj"><span class="c-prox" title="Próxima ação do projeto">' + ic('play', 11) + 'Próxima ação</span></div>';
+    topo = '<div class="fr-proj"><button type="button" class="c-proj" data-edit="projetoId" data-id="' + it.id + '" aria-label="Projeto: ' + esc(proj.titulo) + '. Alterar">' + ic('folder', 12) + '<span class="v">' + destaque(proj.titulo) + '</span></button></div>';
   }
   const meta = [];
   const dCampos = ehLembrete(it) ? ['dataLembrete'] : ['dataEntrega', 'dataLembrete'];
@@ -3433,7 +3480,7 @@ function linhaFoco(it, o){
   }
   if(o.extraMeta) meta.push(o.extraMeta);
   const arrasta = o.arrastavel && !concluido(it);
-  return '<div class="foco-row' + (o.cls ? ' ' + o.cls : '') + (ehLembrete(it) ? ' lemb' : '') + (concluido(it) ? ' done' : '') + '" role="listitem"' + (arrasta ? ' data-foco-id="' + it.id + '"' : '') + '>' +
+  return '<div class="foco-row' + (o.cls ? ' ' + o.cls : '') + (ehLembrete(it) ? ' lemb' : '') + (concluido(it) ? ' done' : '') + '" role="listitem" data-sel-id="' + it.id + '"' + (arrasta ? ' data-foco-id="' + it.id + '"' : '') + '>' +
     (arrasta ? '<span class="fr-hdl" aria-hidden="true">' + ic('grip', 12) + '</span>' : '') + btnConcluir(it) +
     '<div class="fr-corpo">' + topo + '<button type="button" class="fr-tit" data-act="abrir-item" data-id="' + it.id + '">' + destaque(it.titulo) + '</button>' +
     (meta.length ? '<div class="fr-meta">' + meta.join('') + '</div>' : '') + '</div>' + (o.semMenu ? '' : btnMenu(it)) + '</div>';
@@ -3491,7 +3538,14 @@ function heranca(sec, col){
     else if(ag === 'categoria' && col !== 'sem' && getCat(col)) b.categoriaId = col;
     else if(ag === 'faixa') b.dataEntrega = FAIXAS.some(f => f[0] === col) ? primeiroDiaFaixa(col) : null;
   }
-  else if(sec === 'hoje'){ Object.assign(b, {tipo:'tarefa', secao:'tarefas', dataEntrega:primeiroDiaFaixa(col)}); }
+  else if(sec === 'hoje'){
+    // o que a coluna representa: faixa de data, categoria, projeto ou tipo (a entrega padrão é hoje)
+    const ag = state.prefs.hoje.agrupar || 'faixa';
+    Object.assign(b, {tipo:'tarefa', secao:'tarefas', dataEntrega: FAIXAS.some(f => f[0] === col) ? primeiroDiaFaixa(col) : hojeISO()});
+    if(ag === 'categoria' && getCat(col)) b.categoriaId = col;
+    if(ag === 'projeto' && col !== 'sem' && getItem(col)) b.projetoId = col;
+    if(ag === 'tipo' && col === 'projeto') Object.assign(b, {tipo:'projeto', secao:'projetos'});
+  }
   else if(sec === 'categoria'){ Object.assign(b, {tipo:'projeto', secao:'projetos', categoriaId: getCat(r.id) ? r.id : null}); if(statusPorId('projeto', col)) b.status = col; }
   return b;
 }
@@ -3566,12 +3620,11 @@ function listaHTML(sec, conteudo, ctx){
       const pc = pecaCampo(it, cid, 'lista');
       let h = pc ? pc.h : '';
       if(cid === 'titulo') h = '<div class="c-trow">' + btnConcluir(it) + '<div style="flex:1;min-width:0">' + h + chkResumo(it) + linhaMotivo(m, 'cell-motivo') +
-        (ehProxima(it) && cols.indexOf('tipo') === -1 ? '<span class="c-prox" style="margin-top:3px">' + ic('play', 11) + 'Próxima</span>' : '') +
         (semProxima(it) && cols.indexOf('proximaAcao') === -1 ? alertaProxima(it) : '') + '</div></div>';
       return '<div class="lcell">' + h + '</div>';
     }).join('');
     const acao = ctx.acaoLinha && !sub ? ctx.acaoLinha(it) : '';
-    let h = '<div class="lrow' + (sub ? ' sub' : '') + (ehLembrete(it) ? ' lemb' : '') + (concluido(it) ? ' done' : '') + '"' + (arrasta ? ' data-drag-id="' + it.id + '"' : '') + '>' + cells + '<div class="lcell lacoes">' + acao + btnMenu(it) + '</div></div>';
+    let h = '<div class="lrow' + (sub ? ' sub' : '') + (ehLembrete(it) ? ' lemb' : '') + (concluido(it) ? ' done' : '') + '" data-sel-id="' + it.id + '"' + (arrasta && !sub ? ' data-drag-id="' + it.id + '"' : '') + '>' + cells + '<div class="lcell lacoes">' + acao + btnMenu(it) + '</div></div>';
     if(!sub && it.tipo === 'projeto' && state.ui.expandidos.has(it.id)){
       const ts = tarefasDoProjeto(it);
       h += ts.length ? ts.map(t => linha(t, true)).join('') : '<div class="lrow sub"><div class="lcell muted">Nenhuma tarefa neste projeto.</div></div>';
@@ -3604,7 +3657,7 @@ function kanbanHTML(sec, cols, ctx){
     const rasc = addAberto ? rascunhoHTML(sec, c.chave, c.nome) : '';
     const pe = !addAberto && pode ? botaoAdicionar(sec, c.chave) : '';
     // coluna de conclusão: concluídos ficam ocultos; o link liga o filtro "Ver concluídos" desta seção
-    const temFiltro = state.prefs[sec] && 'concluidos' in state.prefs[sec];
+    const temFiltro = !ctx.semConc && state.prefs[sec] && 'concluidos' in state.prefs[sec];
     const nConc = temFiltro && ctx.statusTipo && c.chave === statusFinal(ctx.statusTipo).id ? contaConcluidos(sec) : 0;
     const linkConc = nConc ? '<button type="button" class="kcol-conc" data-act="tog-concl" data-sec="' + sec + '" aria-pressed="' + state.prefs[sec].concluidos + '">' + ic('checkSq', 14) +
       (state.prefs[sec].concluidos ? 'Ocultar concluídos' : 'Ver ' + nConc + ' concluído' + (nConc > 1 ? 's' : '')) + '</button>' : '';
@@ -3633,6 +3686,7 @@ function corpoLayout(v){
         '<button type="button" class="icon-btn sm" data-act="mover-ordem" data-lista="' + lst + '" data-k="' + e.id + '" data-d="1" aria-label="Mover ' + esc(def.nome) + ' para baixo">' + ic('arrowD',15) + '</button></div>';
     }).join('') + '</div>' +
     '<button type="button" class="btn sm" data-act="campo-novo" data-v="' + v + '" style="margin-top:6px">' + ic('plus',14) + 'Novo campo</button>' +
+    (v !== 'card' ? '<div class="divider"></div>' + swHTML('Mostrar campos vazios', 'Campos sem valor aparecem como “Sem …” (em vez de agrupados em “+ Campos”); toque para preencher', 'tog-vazios', !!state.prefs.mostrarVazios) : '') +
     (v === 'lista' ? '<div class="divider"></div><div class="switch"><span class="tx">Quebrar linhas<small>Ligado (padrão, em todas as seções e visões): nada fica cortado. Desligado: textos longos são truncados.</small></span>' +
       '<button type="button" class="toggle' + (state.prefs.listaQuebra ? ' on' : '') + '" role="switch" aria-checked="' + state.prefs.listaQuebra + '" data-act="tog-quebra" aria-label="Quebrar linhas"></button></div>' +
       '<p class="hint">' + ic('info',13) + '<span>Largura das colunas: arraste a borda do cabeçalho da lista (duplo clique restaura).</span></p>' +
@@ -3765,10 +3819,11 @@ const ORDENS = {
 /** Ordens da seção, com "Personalizada" quando já existe uma ordem arrastada no Foco. */
 function opcoesOrdem(sec){
   const l = (ORDENS[sec] || []).slice(), p = state.prefs[sec];
-  if(p && Array.isArray(p.manual) && (p.manual.length || p.ordem === 'manual')) l.push(['manual','Personalizada (arrastada no Foco)']);
+  if(p && Array.isArray(p.manual) && (p.manual.length || p.ordem === 'manual')) l.push(['manual','Personalizada (arrastando os cards)']);
   return l;
 }
 const AGRUPAR = {
+  hoje:[['faixa','Faixa de data'],['categoria','Categoria'],['projeto','Projeto'],['tipo','Tipo'],['nenhum','Sem agrupamento']],
   projetos:[['status','Status'],['categoria','Categoria'],['nenhum','Sem agrupamento']],
   tarefas:[['status','Status'],['projeto','Projeto'],['categoria','Categoria'],['faixa','Faixa de data'],['nenhum','Sem agrupamento']]
 };
@@ -3791,8 +3846,9 @@ function btnVisao(sec){
 function optsFerramentas(sec){
   if(sec === 'projeto') return {filtros:false};   // "Ver concluídos" fica ao lado de "Tarefas do projeto"
   if(sec === 'entrada') return state.prefs.entrada.aba === 'futuro' ? {visao:false, agruparFuturo:true} : {visao:false, filtros:false, ordem:false};
-  if(sec === 'projetos') return {agrupar: state.prefs.projetos.visao === 'lista', concluidos:true};
-  if(sec === 'categoria') return {filtros:false, concluidos:true};
+  if(sec === 'projetos') return {agrupar:true, concluidos:true};
+  if(sec === 'categoria') return {concluidos:true};
+  if(sec === 'hoje') return {agrupar:true};
   if(sec === 'tarefas') return {agrupar:true, concluidos:true};
   return {};
 }
@@ -3813,6 +3869,8 @@ function ferramentas(sec){
     const n = contaFiltrosSec(sec);
     h += '<button type="button" class="btn' + (n ? ' on' : '') + '" data-act="sheet-opcoes" data-sec="' + sec + '">' + ic('filter',15) + 'Filtros' + (n ? ' (' + n + ')' : '') + '</button>';
     if(o.concluidos) h += btnVerConcluidos(sec, true);
+    h += '<button type="button" class="btn icon-only" data-act="sheet-exibicao" data-sec="' + sec + '" aria-label="Exibição: campos do card e quebra de linha">' + ic('gear',16) + '</button>';
+    if(SECOES_ARRASTAVEIS.indexOf(sec) !== -1) h += btnSelecionar(true);
     return h;
   }
   if(o.filtros !== false){ const n = contaFiltrosSec(sec); h += '<button type="button" class="btn' + (n ? ' on' : '') + '" data-act="sheet-filtros" data-sec="' + sec + '">' + ic('filter',15) + 'Filtros' + (n ? ' (' + n + ')' : '') + '</button>'; }
@@ -3820,14 +3878,36 @@ function ferramentas(sec){
   if(o.agrupar && !foco) h += '<button type="button" class="btn" data-act="sheet-agrupar" data-sec="' + sec + '">' + ic('layers',15) + 'Agrupar: ' + esc(rotuloAgrupar(sec)) + '</button>';
   if(o.agruparFuturo) h += '<button type="button" class="btn' + (state.prefs.entrada.agrupar === 'categoria' ? ' on' : '') + '" data-act="toggle-agrup-futuro" aria-pressed="' + (state.prefs.entrada.agrupar === 'categoria') + '">' + ic('layers',15) + 'Agrupar por categoria</button>';
   if(o.concluidos) h += btnVerConcluidos(sec);
+  if(SECOES_ARRASTAVEIS.indexOf(sec) !== -1) h += btnSelecionar(false);
   // exibição (campos/colunas e quebra de linha) fica atrás da engrenagem
   const aberto = state.ui.maisFerr;
   h += '<button type="button" class="btn icon-only' + (aberto ? ' on' : '') + '" data-act="tog-mais-ferr" aria-expanded="' + aberto + '" aria-label="Mais opções de exibição" data-tip="' + (aberto ? 'Menos opções' : 'Mais opções') + '" data-tip-sempre="1">' + ic('gear',16) + '</button>';
   if(aberto){
     if(!foco) h += '<button type="button" class="btn" data-act="sheet-layout" data-v="' + visao + '">' + ic('sliders',15) + (visao === 'lista' ? 'Colunas' : 'Campos') + '</button>';
+    if(!foco) h += '<button type="button" class="btn' + (state.prefs.mostrarVazios ? ' on' : '') + '" data-act="tog-vazios" aria-pressed="' + !!state.prefs.mostrarVazios + '">' + ic('plus',15) + 'Campos vazios</button>';
     h += '<button type="button" class="btn' + (state.prefs.listaQuebra ? ' on' : '') + '" data-act="tog-quebra" aria-pressed="' + state.prefs.listaQuebra + '">' + ic('wrap',15) + 'Quebrar linhas</button>';
   }
   return h;
+}
+function btnSelecionar(compacto){
+  const on = !!state.ui.modoSel;
+  return '<button type="button" class="btn' + (compacto ? ' icon-only' : '') + (on ? ' on' : '') + '" data-act="tog-sel" aria-pressed="' + on + '" aria-label="Selecionar vários" data-tip="Selecionar vários" data-tip-sempre="1">' +
+    ic('multi',16) + (compacto ? '' : 'Selecionar') + '</button>';
+}
+/** Campos da lista: no celular a lista vira cards, então o nome é "Campos do card". */
+const rotuloLayout = v => v === 'lista' && !ehCelular() ? 'Colunas da lista' : 'Campos do card';
+function swHTML(rot, sub, act, on){
+  return '<div class="switch"><span class="tx">' + rot + (sub ? '<small>' + sub + '</small>' : '') + '</span><button type="button" class="toggle' + (on ? ' on' : '') + '" data-act="' + act + '" role="switch" aria-checked="' + on + '" aria-label="' + rot + '"></button></div>';
+}
+/** Engrenagem do celular: o que aparece nos cards desta seção. */
+function sheetExibicao(sec){
+  abrirSheet({titulo:'Exibição', autofoco:false, rodape:'<button type="button" class="btn prim blk" data-act="fechar-sheet">Pronto</button>', corpoFn:function(){
+    const o = optsFerramentas(sec), visao = o.visao === false ? 'lista' : state.prefs[sec].visao;
+    return (visao === 'foco' ? '<p class="hint" style="margin:0 0 10px">' + ic('info',13) + '<span>No Foco, cada linha mostra só o essencial. Troque para Kanban ou Lista para escolher os campos.</span></p>'
+        : '<button type="button" class="btn blk" data-act="sheet-layout" data-v="' + visao + '">' + ic('sliders',15) + rotuloLayout(visao) + '</button>' +
+          swHTML('Mostrar campos vazios', 'Campos sem valor aparecem como “Sem …”; toque para preencher', 'tog-vazios', !!state.prefs.mostrarVazios)) +
+      swHTML('Quebrar linhas', 'Padrão: nada fica cortado', 'tog-quebra', state.prefs.listaQuebra);
+  }});
 }
 /** Sheet "Filtros" do celular: filtros, ordem, agrupamento, exibição e concluídos num lugar só. */
 function corpoOpcoes(sec){
@@ -3843,7 +3923,8 @@ function corpoOpcoes(sec){
   h += '<div class="sect-t">Exibição</div>';
   if(o.agruparFuturo) h += sw('Agrupar por categoria', '', 'toggle-agrup-futuro', p.agrupar === 'categoria');
   h += sw('Quebrar linhas', 'Padrão: nada fica cortado', 'tog-quebra', state.prefs.listaQuebra);
-  if(!foco) h += '<button type="button" class="btn blk" data-act="sheet-layout" data-v="' + visao + '" style="margin-top:6px">' + ic('sliders',15) + (visao === 'lista' ? 'Colunas da lista' : 'Campos do card') + '</button>';
+  if(!foco) h += sw('Mostrar campos vazios', 'Campos sem valor aparecem como “Sem …”; toque para preencher', 'tog-vazios', !!state.prefs.mostrarVazios) +
+    '<button type="button" class="btn blk" data-act="sheet-layout" data-v="' + visao + '" style="margin-top:6px">' + ic('sliders',15) + rotuloLayout(visao) + '</button>';
   if(o.concluidos) h += '<div class="sect-t">Concluídos</div>' + sw('Ver concluídos (' + contaConcluidos(sec) + ')', 'Mostra os concluídos aqui mesmo, junto com os abertos', 'tog-concl', !!p.concluidos, ' data-sec="' + sec + '"');
   return h;
 }
@@ -3856,6 +3937,9 @@ function renderTopbar(){
   const r = state.ui.rota, c = contadores();
   let titulo = SECOES[r.view] ? SECOES[r.view].nome : PAGINAS[r.view] ? PAGINAS[r.view].nome : 'Estrutura';
   let sub = '', voltar = '', tools = '', chips = '';
+  // atalho de categorias nas seções com filtro de categoria (em Entrada, só no Futuro)
+  const catSec = r.view === 'entrada' ? (state.prefs.entrada.aba === 'futuro' ? 'entrada' : null) : (['hoje','projetos','tarefas'].indexOf(r.view) !== -1 && !r.id ? r.view : null);
+  const cats = catSec ? '<div class="tb-cats" role="group" aria-label="Filtrar por categoria">' + chipsCategorias(catSec) + '</div>' : '';
   if(r.view === 'projetos' && r.id){
     const p = getItem(r.id);
     titulo = p ? p.titulo : 'Projeto';
@@ -3876,6 +3960,7 @@ function renderTopbar(){
     titulo = cat ? cat.nome : 'Sem categoria';
     sub = 'Categoria · ' + n + (n === 1 ? ' projeto ativo' : ' projetos ativos');
     tools = ferramentas('categoria');
+    chips = chipsFiltros('categoria');
   }else if(r.view === 'hoje'){
     sub = c.hoje + (c.hoje === 1 ? ' item' : ' itens');
     tools = ferramentas('hoje');
@@ -3913,7 +3998,7 @@ function renderTopbar(){
       '<button type="button" class="icon-btn busca-mob" data-act="abrir-busca-mobile" aria-label="Buscar">' + ic('search',18) + '</button>' +
     '</div>' +
     // ferramentas e chips recolhem juntos ao rolar para baixo no celular
-    '<div class="tb-extra"><div>' + (tools ? '<div class="tb-tools">' + tools + '</div>' : '<div style="height:10px"></div>') +
+    '<div class="tb-extra"><div>' + (tools ? '<div class="tb-tools">' + tools + '</div>' : '<div style="height:10px"></div>') + cats +
     (chips ? '<div class="tb-chips">' + chips + '</div>' : '') + '</div></div>';
 }
 
@@ -3944,10 +4029,6 @@ function chipsFiltrosHoje(){
     const n = {projeto:'Projetos', tarefa:'Tarefas', lemb:'Lembretes'};
     out.push('<span class="chip">Tipo: ' + esc(p.tipos.map(t => n[t]).join(', ') || 'nenhum') + chipX('rm-filtro','data-sec="hoje" data-f="tipos"','tipo') + '</span>');
   }
-  p.categorias.forEach(function(cid){
-    const c = getCat(cid);
-    out.push('<span class="chip"><span class="dot" style="background:' + esc(c ? c.cor : 'var(--text-3)') + '"></span>' + esc(c ? c.nome : 'Sem categoria') + chipX('rm-arr','data-sec="hoje" data-k="categorias" data-v="' + esc(cid) + '"', c ? c.nome : 'Sem categoria') + '</span>');
-  });
   out.push('<span class="chip">' + ic('sort',12) + 'Ordem: ' + esc(rotuloOrdem('hoje')) + '</span>');
   if(contaFiltrosHoje()) out.push('<button type="button" class="chip clickable" data-act="limpar-filtros" data-sec="hoje">' + ic('refresh',12) + 'Limpar filtros</button>');
   return out.join('');
@@ -3956,20 +4037,26 @@ function chipsFiltros(sec){
   const p = state.prefs[sec], out = [];
   const nt = {projeto:'Projetos', tarefa:'Tarefas', sem:'Sem tipo'};
   (p.tipos || []).forEach(t => out.push('<span class="chip">' + esc(nt[t]) + chipX('rm-arr','data-sec="' + sec + '" data-k="tipos" data-v="' + t + '"', nt[t]) + '</span>'));
-  const tipoSt = sec === 'projetos' ? 'projeto' : 'tarefa';
+  const tipoSt = sec === 'tarefas' ? 'tarefa' : 'projeto';
   (p.statusF || []).forEach(function(sid){
     const s = statusPorId(tipoSt, sid); if(!s) return;
     out.push('<span class="chip"><span class="dot" style="background:' + esc(s.cor) + ';border-radius:50%"></span>' + esc(s.nome) + chipX('rm-arr','data-sec="' + sec + '" data-k="statusF" data-v="' + sid + '"', s.nome) + '</span>');
-  });
-  (p.categorias || []).forEach(function(cid){
-    const c = getCat(cid);
-    out.push('<span class="chip"><span class="dot" style="background:' + esc(c ? c.cor : 'var(--text-3)') + '"></span>' + esc(c ? c.nome : 'Sem categoria') + chipX('rm-arr','data-sec="' + sec + '" data-k="categorias" data-v="' + esc(cid) + '"', c ? c.nome : 'Sem categoria') + '</span>');
   });
   (p.projetosF || []).forEach(pid => out.push('<span class="chip">' + ic('folder',12) + esc(pid === 'sem' ? 'Sem projeto' : (nomeProjeto(pid) || '?')) + chipX('rm-arr','data-sec="' + sec + '" data-k="projetosF" data-v="' + esc(pid) + '"','projeto') + '</span>'));
   if(p.dtIni || p.dtFim) out.push('<span class="chip">' + ic('calendar',12) + esc((p.dtIni ? fmtCurta(p.dtIni) : '…') + ' a ' + (p.dtFim ? fmtCurta(p.dtFim) : '…')) + chipX('rm-filtro','data-sec="' + sec + '" data-f="intervalo"','intervalo') + '</span>');
   if(sec === 'tarefas' && p.lembF !== 'todas') out.push('<span class="chip">' + ic('bell',12) + (p.lembF === 'lemb' ? 'Só lembretes' : 'Sem lembretes') + chipX('rm-filtro','data-sec="tarefas" data-f="lembF"','lembretes') + '</span>');
   if(contaFiltros(sec) - (sec === 'tarefas' && p.vinculo !== 'todas' ? 1 : 0) > 0) out.push('<button type="button" class="chip clickable" data-act="limpar-filtros" data-sec="' + sec + '">' + ic('refresh',12) + 'Limpar filtros</button>');
   return out.join('');
+}
+/** Atalho abaixo da barra: "Todas", cada categoria e "Sem categoria" (um toque filtra; outro toque volta para Todas). */
+function chipsCategorias(sec){
+  const sel = state.prefs[sec].categorias || [];
+  const chip = (id, nome, cor) => {
+    const on = id ? sel.indexOf(id) !== -1 : !sel.length;
+    return '<button type="button" class="chip clickable' + (on ? ' on' : '') + '" data-act="cat-atalho" data-sec="' + sec + '" data-cat="' + esc(id || '') + '" aria-pressed="' + on + '">' +
+      (cor ? '<span class="dot" style="background:' + esc(cor) + '"></span>' : '') + esc(nome) + '</button>';
+  };
+  return chip('', 'Todas') + categorias().map(c => chip(c.id, c.nome, c.cor)).join('') + chip('sem', 'Sem categoria', 'var(--text-3)');
 }
 function chipsVinculo(){
   const v = state.prefs.tarefas.vinculo, n = {todas:'Todas', com:'Com projeto', sem:'Sem projeto'};
@@ -4014,8 +4101,8 @@ function corpoFiltros(sec){
     h += '<div class="sect-t">Tipo</div><div class="opt-list">' + [['tarefa','Tarefas'],['projeto','Projetos'],['sem','Sem tipo']].map(x =>
       optCheck(x[1], p.tipos.indexOf(x[0]) !== -1, 'data-act="tog-arr" data-sec="entrada" data-k="tipos" data-v="' + x[0] + '"')).join('') + '</div>';
   }
-  if(sec === 'projetos' || sec === 'tarefas'){
-    const tp = sec === 'projetos' ? 'projeto' : 'tarefa';     // cada tipo com a sua lista de status
+  if(sec === 'projetos' || sec === 'tarefas' || sec === 'categoria'){
+    const tp = sec === 'tarefas' ? 'tarefa' : 'projeto';     // cada tipo com a sua lista de status
     h += '<div class="sect-t">Status ' + (tp === 'projeto' ? 'do projeto' : 'da tarefa') + '</div><div class="opt-list">' +
       listaStatus(tp).map(s => optCheck(s.nome, p.statusF.indexOf(s.id) !== -1, 'data-act="tog-arr" data-sec="' + sec + '" data-k="statusF" data-v="' + s.id + '"', s.cor)).join('') + '</div>';
   }
@@ -4023,7 +4110,7 @@ function corpoFiltros(sec){
     h += '<div class="sect-t">Projeto</div><div class="opt-list">' + optCheck('Sem projeto', p.projetosF.indexOf('sem') !== -1, 'data-act="tog-arr" data-sec="tarefas" data-k="projetosF" data-v="sem"') +
       projetos().filter(x => x.secao !== 'entrada').map(x => optCheck(x.titulo + (concluido(x) ? ' (concluído)' : ''), p.projetosF.indexOf(x.id) !== -1, 'data-act="tog-arr" data-sec="tarefas" data-k="projetosF" data-v="' + x.id + '"')).join('') + '</div>';
   }
-  h += blocoCategorias(sec);
+  if(sec !== 'categoria') h += blocoCategorias(sec);
   if(sec !== 'entrada'){
     h += '<div class="sect-t">Intervalo de datas</div><div style="display:flex;gap:8px">' +
       '<div class="field" style="flex:1"><label for="dI' + sec + '">De</label><input class="inp" type="date" id="dI' + sec + '" data-act="set-cust" data-sec="' + sec + '" data-k="dtIni" value="' + esc(p.dtIni) + '"></div>' +
@@ -4036,7 +4123,7 @@ function aplicaFiltros(arr, sec){
   const p = state.prefs[sec];
   return arr.filter(function(it){
     if(p.tipos && p.tipos.length && p.tipos.indexOf(it.tipo || 'sem') === -1) return false;
-    if(p.statusF && p.statusF.length && p.statusF.indexOf(it.status) === -1) return false;
+    if(p.statusF && p.statusF.length && p.statusF.indexOf(statusEfetivo(it)) === -1) return false;
     if(p.categorias && p.categorias.length && p.categorias.indexOf(it.categoriaId || 'sem') === -1) return false;
     if(p.projetosF && p.projetosF.length && p.projetosF.indexOf(it.projetoId || 'sem') === -1) return false;
     if(sec === 'tarefas' && p.lembF === 'lemb' && !ehLembrete(it)) return false;
@@ -4055,7 +4142,7 @@ function sheetFiltros(sec){
 function sheetOrdem(sec){
   abrirSheet({titulo:'Ordenar', autofoco:false, corpoFn:() => '<div class="opt-list" role="radiogroup" aria-label="Ordenar por">' +
     opcoesOrdem(sec).map(o => optRadio(o[1], state.prefs[sec].ordem === o[0], 'data-act="set-ordem" data-fechar="1" data-sec="' + sec + '" data-v="' + o[0] + '"')).join('') + '</div>' +
-    '<p class="hint">' + ic('info',13) + '<span>' + (ehDesktop() ? 'Na lista, clique no nome de uma coluna para ordenar por ela. ' : '') + 'No Foco, arraste um item para criar uma ordem personalizada.</span></p>'});
+    '<p class="hint">' + ic('info',13) + '<span>' + (ehDesktop() ? 'Na lista, clique no nome de uma coluna para ordenar por ela. ' : '') + 'Arraste os cards, em qualquer visão, para criar uma ordem personalizada.</span></p>'});
 }
 function sheetAgrupar(sec){
   abrirSheet({titulo:'Agrupar por', autofoco:false, corpoFn:() => '<div class="opt-list" role="radiogroup" aria-label="Agrupar por">' +
@@ -4105,8 +4192,7 @@ function viewEntrada(){
     '<div class="swipe-wrap"><div class="swipe-bg" aria-hidden="true"><span>' + ic('split',14) + 'Triagem</span><span>Futuro' + ic('archive',14) + '</span></div>' +
     '<div class="swipe-el' + (espiar && i === 0 ? ' espiar' : '') + '" data-swipe-id="' + it.id + '">' + cardHTML(it, {layout:'lista', topo:'<div class="c-meta">' + ic('clock',12) + 'Capturado ' + esc(tempoRelativo(it.criadoEm)) + '</div>', rodape:rodapeTriagem}) + '</div></div>').join('');
   if(espiar){ state.prefs.dicas.swipe = true; persistirPrefs(); }
-  return 
-    '<p class="hint" style="margin:0 0 10px">' + ic('info',13) + '<span>' + (toque ? 'Deslize o card para a direita para fazer a triagem ou para a esquerda para classificar no Futuro — ou use os botões do card. Dá para desfazer.' : 'Transforme cada item em tarefa ou projeto, classifique no Futuro ou descarte (fica ' + DIAS_LIXEIRA + ' dias na lixeira).') + '</span></p>' +
+  return '<p class="hint" style="margin:0 0 10px">' + ic('info',13) + '<span>' + (toque ? 'Deslize o card para a direita para fazer a triagem ou para a esquerda para classificar no Futuro — ou use os botões do card. Dá para desfazer.' : 'Transforme cada item em tarefa ou projeto, classifique no Futuro ou descarte (fica ' + DIAS_LIXEIRA + ' dias na lixeira).') + '</span></p>' +
     '<div class="cards lista-m">' + cards + '</div>';
 }
 function acaoFuturo(it){
@@ -4142,18 +4228,44 @@ function viewHoje(){
     return vazio('sparkle', semFiltroExtra ? 'Nada para hoje 🎉' : 'Nada com esses filtros', semFiltroExtra ? 'Nenhum item com data no período selecionado.' : 'Tente ampliar o período ou remover filtros.',
       (p.periodo !== 'prox7' ? '<button type="button" class="btn prim" data-act="set-periodo" data-v="prox7">' + ic('calendar',15) + 'Ver os próximos 7 dias</button>' : '') + (contaFiltrosHoje() ? btnLimparFiltros('hoje') : ''));
   }
-  const porFaixa = f => lista.filter(it => faixaDe(motivoHoje(it).iso) === f);
   if(p.visao === 'foco'){
     // no Foco, o que acabou de ser concluído desce para "Concluídas" em vez de sumir
     const feitos = items().filter(it => state.ui.recemConcluidos.has(it.id) && concluido(it) && ativo(it) && motivoHoje(it));
     return focoHTML('hoje', lista.concat(feitos), {faixaFn: it => faixaDe(motivoHoje(it).iso), placeholder:'Adicionar tarefa para hoje'});
   }
+  const ag = p.agrupar || 'faixa';
+  const agK = p.visao === 'kanban' && ag === 'nenhum' ? 'faixa' : ag;   // o kanban sempre tem colunas
+  if(agK === 'nenhum') return listaHTML('hoje', {itens:lista}, {motivoFn:motivoHoje, addFlat:true});
+  const grupos = soColunasFiltradas('hoje', gruposHoje(lista, agK), agK);
   if(p.visao === 'kanban'){
-    const cols = FAIXAS.map(f => ({chave:f[0], nome:f[1], itens:porFaixa(f[0]), foraPeriodo:!faixaNoPeriodo(f[0])}));
-    return '<p class="hint" style="margin:0 0 8px">' + ic('info',13) + '<span>Arraste um card para outra faixa para reagendar a data que o trouxe para cá. Cards movidos para fora do período continuam visíveis até você sair da tela.</span></p>' +
-      kanbanHTML('hoje', cols, {dropKind:'faixa', motivoFn:motivoHoje, podeAdicionar: k => k !== 'vencidos'});
+    const kind = {faixa:'faixa', categoria:'categoria', projeto:'projeto'}[agK] || '';
+    return (kind === 'faixa' ? '<p class="hint" style="margin:0 0 8px">' + ic('info',13) + '<span>Arraste um card para outra faixa para reagendar a data que o trouxe para cá. Cards movidos para fora do período continuam visíveis até você sair da tela.</span></p>' : '') +
+      kanbanHTML('hoje', grupos, {dropKind:kind, motivoFn:motivoHoje, podeAdicionar: k => k !== 'vencidos'});
   }
-  return listaHTML('hoje', {grupos: FAIXAS.map(f => ({chave:f[0], nome:f[1], itens:porFaixa(f[0])}))}, {motivoFn:motivoHoje, podeAdicionar: k => k !== 'vencidos'});
+  return listaHTML('hoje', {grupos}, {motivoFn:motivoHoje, podeAdicionar: k => k !== 'vencidos'});
+}
+
+/** Com filtro na mesma dimensão das colunas (status, categoria ou projeto), só as colunas filtradas aparecem. */
+function soColunasFiltradas(sec, grupos, dim){
+  const p = state.prefs[sec] || {};
+  const sel = dim === 'status' ? p.statusF : dim === 'categoria' ? p.categorias : dim === 'projeto' ? p.projetosF : null;
+  return sel && sel.length ? grupos.filter(g => sel.indexOf(g.chave) !== -1) : grupos;
+}
+function gruposCategoria(lista){
+  return categorias().map(c => ({chave:c.id, nome:c.nome, cor:c.cor, itens:lista.filter(i => i.categoriaId === c.id)}))
+    .concat([{chave:'sem', nome:'Sem categoria', itens:lista.filter(i => !i.categoriaId)}]);
+}
+/** Grupos de Hoje: faixa de data (padrão), categoria, projeto (o projeto e as tarefas dele juntos) ou tipo. */
+function gruposHoje(lista, ag){
+  if(ag === 'categoria') return gruposCategoria(lista);
+  if(ag === 'projeto'){
+    const chave = i => i.tipo === 'projeto' ? i.id : (i.projetoId || 'sem'), ids = [];
+    lista.forEach(i => { const k = chave(i); if(k !== 'sem' && ids.indexOf(k) === -1) ids.push(k); });
+    return ids.map(k => ({chave:k, nome:nomeProjeto(k) || 'Projeto', itens:lista.filter(i => chave(i) === k)}))
+      .concat([{chave:'sem', nome:'Sem projeto', itens:lista.filter(i => chave(i) === 'sem')}]);
+  }
+  if(ag === 'tipo') return [{chave:'projeto', nome:'Projetos', itens:lista.filter(i => i.tipo === 'projeto')}, {chave:'tarefa', nome:'Tarefas e lembretes', itens:lista.filter(i => i.tipo !== 'projeto')}];
+  return FAIXAS.map(f => ({chave:f[0], nome:f[1], itens:lista.filter(it => faixaDe(motivoHoje(it).iso) === f[0]), foraPeriodo:!faixaNoPeriodo(f[0])}));
 }
 
 /* ---------- PROJETOS (somente projetos) ---------- */
@@ -4165,32 +4277,45 @@ function viewProjetos(){
     return vazio('folder', 'Nenhum projeto por aqui', 'Projetos reúnem tarefas com um objetivo comum.', '<button type="button" class="btn prim" data-act="novo-projeto">' + ic('plus',15) + 'Criar projeto</button>');
   }
   if(p.visao === 'foco') return focoHTML('projetos', lista, {placeholder:'Adicionar projeto', vazio:'Nenhum projeto aberto.'});
-  if(p.visao === 'kanban'){
-    // Kanban de Projetos: sempre as colunas de status de PROJETO
-    return kanbanHTML('projetos', listaStatus('projeto').map(s => ({chave:s.id, nome:s.nome, cor:s.cor, itens:lista.filter(i => i.status === s.id)})), {dropKind:'status-projeto', statusTipo:'projeto'});
-  }
-  if(p.agrupar === 'nenhum') return listaHTML('projetos', {itens:lista}, {addFlat:true});
-  const grupos = p.agrupar === 'status'
-    ? listaStatus('projeto').map(s => ({chave:s.id, nome:s.nome, itens:lista.filter(i => i.status === s.id)}))
-    : categorias().map(c => ({chave:c.id, nome:c.nome, itens:lista.filter(i => i.categoriaId === c.id)})).concat([{chave:'sem', nome:'Sem categoria', itens:lista.filter(i => !i.categoriaId)}]);
+  // agrupar: status (colunas de status de PROJETO) ou categoria; "sem agrupamento" só na lista
+  const ag = p.agrupar === 'categoria' ? 'categoria' : p.agrupar === 'nenhum' && p.visao !== 'kanban' ? 'nenhum' : 'status';
+  if(ag === 'nenhum') return listaHTML('projetos', {itens:lista}, {addFlat:true});
+  const grupos = soColunasFiltradas('projetos', ag === 'status'
+    ? listaStatus('projeto').map(s => ({chave:s.id, nome:s.nome, cor:s.cor, itens:lista.filter(i => i.status === s.id)}))
+    : gruposCategoria(lista), ag);
+  if(p.visao === 'kanban') return kanbanHTML('projetos', grupos, ag === 'status' ? {dropKind:'status-projeto', statusTipo:'projeto'} : {dropKind:'categoria'});
   return listaHTML('projetos', {grupos}, {podeAdicionar: () => true});
 }
 
 /* ---------- PÁGINA DA CATEGORIA (os projetos dela; categoria é um grupo de projetos) ---------- */
 function projetosDaCategoria(cid){ return items().filter(i => i.tipo === 'projeto' && i.secao === 'projetos' && (i.categoriaId || 'sem') === cid); }
+/** Só o intervalo de datas (os demais filtros da categoria são de projeto). */
+function filtraIntervalo(arr, p){
+  if(!p.dtIni && !p.dtFim) return arr;
+  return arr.filter(it => [it.dataLembrete, it.dataEntrega].filter(Boolean).some(d => (!p.dtIni || d >= p.dtIni) && (!p.dtFim || d <= p.dtFim)));
+}
 function viewCategoria(cid){
   if(!cid || (cid !== 'sem' && !getCat(cid))) return vazio('alert', 'Categoria não encontrada', 'Ela pode ter sido excluída.', '<button type="button" class="btn" data-act="nav" data-view="projetos">Ir para Projetos</button>');
   const p = state.prefs.categoria;
-  const lista = ordenar(filtraConcluidos(filtraBusca(projetosDaCategoria(cid)), 'categoria'), p.ordem, ctxOrdem('categoria'));
-  const soltas = ordenar(filtraConcluidos(filtraBusca(items().filter(i => i.tipo === 'tarefa' && i.secao === 'tarefas' && !i.projetoId && !ehLembrete(i) && (i.categoriaId || 'sem') === cid)), 'categoria'), 'entrega-asc');
+  const lista = ordenar(filtraConcluidos(filtraBusca(aplicaFiltros(projetosDaCategoria(cid), 'categoria')), 'categoria'), p.ordem, ctxOrdem('categoria'));
+  const soltas = ordenar(filtraConcluidos(filtraBusca(filtraIntervalo(items().filter(i => i.tipo === 'tarefa' && i.secao === 'tarefas' && !i.projetoId && !ehLembrete(i) && (i.categoriaId || 'sem') === cid), p)), 'categoria'), p.ordem, ctxOrdem('categoria'));
+  const filtrando = contaFiltros('categoria') || state.ui.busca.trim().length >= 2;
   let corpo;
   if(p.visao === 'foco') corpo = focoHTML('categoria', lista, {placeholder:'Adicionar projeto', vazio:'Nenhum projeto aberto nesta categoria.'});
-  else if(!lista.length) corpo = vazio('folder', state.ui.busca.trim().length >= 2 ? 'Nenhum projeto com essa busca' : 'Nenhum projeto nesta categoria',
-    'Categorias agrupam projetos; os projetos agrupam tarefas.', '<button type="button" class="btn prim" data-act="novo-projeto" data-cat="' + esc(cid) + '">' + ic('plus',15) + 'Criar projeto</button>');
-  else if(p.visao === 'kanban') corpo = kanbanHTML('categoria', listaStatus('projeto').map(s => ({chave:s.id, nome:s.nome, cor:s.cor, itens:lista.filter(i => i.status === s.id)})), {dropKind:'status-projeto', statusTipo:'projeto'});
+  else if(!lista.length) corpo = filtrando
+    ? vazio('filter', 'Nenhum projeto com esses filtros', '', (contaFiltros('categoria') ? btnLimparFiltros('categoria') : '') + (state.ui.busca ? btnLimparBusca() : ''))
+    : vazio('folder', 'Nenhum projeto nesta categoria', 'Categorias agrupam projetos; os projetos agrupam tarefas.', '<button type="button" class="btn prim" data-act="novo-projeto" data-cat="' + esc(cid) + '">' + ic('plus',15) + 'Criar projeto</button>');
+  else if(p.visao === 'kanban') corpo = kanbanHTML('categoria', soColunasFiltradas('categoria', listaStatus('projeto').map(s => ({chave:s.id, nome:s.nome, cor:s.cor, itens:lista.filter(i => i.status === s.id)})), 'status'), {dropKind:'status-projeto', statusTipo:'projeto'});
   else corpo = listaHTML('categoria', {itens:lista}, {addFlat:true});
-  const avulsas = soltas.length ? '<div style="margin-top:18px">' + grupo('categoria', 'avulsas', 'Tarefas sem projeto', '<div class="cards">' + soltas.map(it => cardHTML(it, {layout:'lista', arrastavel:true})).join('') + '</div>', soltas.length) + '</div>' : '';
-  return corpo + avulsas;
+  // tarefas sem projeto: seção própria, na mesma visão e com os mesmos filtros de data
+  let tarefas = '';
+  if(soltas.length){
+    const conteudo = p.visao === 'foco' ? focoHTML('categoria', soltas, {semAdicionar:true})
+      : p.visao === 'kanban' ? kanbanHTML('categoria', gruposStatusTarefa(soltas), {dropKind:'status-tarefa', statusTipo:'tarefa', semAdicionar:true, semConc:true})
+      : listaHTML('categoria', {itens:soltas}, {});
+    tarefas = '<section class="cat-tarefas" aria-label="Tarefas sem projeto"><h2 class="cat-sec-t">Tarefas sem projeto <span class="cnt">' + soltas.length + '</span></h2>' + conteudo + '</section>';
+  }
+  return corpo + tarefas;
 }
 
 /* ---------- PÁGINA DO PROJETO ---------- */
@@ -4242,11 +4367,15 @@ function viewProjeto(id){
     '<div class="card" style="padding:0;overflow:hidden;-webkit-user-select:auto;user-select:auto">' + feedHTML(p, 'pg') + composerHTML(p, 'pg') + '</div></div>';
 }
 
-/** Colunas/grupos por status de tarefa; os lembretes (sem status) vêm primeiro, numa coluna própria. */
+/** Lembretes não têm status nem coluna própria: abertos ficam em "Para fazer" (ou no primeiro status); concluídos, no de conclusão. */
+function statusDoLembrete(it){
+  if(concluido(it)) return statusFinal('tarefa').id;
+  const pf = listaStatus('tarefa').find(s => !s.final && normaliza(s.nome) === 'para fazer');
+  return (pf || statusInicial('tarefa')).id;
+}
+const statusEfetivo = it => ehLembrete(it) ? statusDoLembrete(it) : it.status;
 function gruposStatusTarefa(lista){
-  const lembs = lista.filter(ehLembrete), outros = lista.filter(i => !ehLembrete(i));
-  return (lembs.length ? [{chave:'lembretes', nome:'Lembretes', cor:'#0e7490', itens:lembs}] : [])
-    .concat(listaStatus('tarefa').map(s => ({chave:s.id, nome:s.nome, cor:s.cor, itens:outros.filter(i => i.status === s.id)})));
+  return listaStatus('tarefa').map(s => ({chave:s.id, nome:s.nome, cor:s.cor, itens:lista.filter(i => statusEfetivo(i) === s.id)}));
 }
 /* ---------- TAREFAS (somente tarefas) ---------- */
 function viewTarefas(){
@@ -4281,6 +4410,7 @@ function viewTarefas(){
     grupos = gruposStatusTarefa(lista);
     ctxK = {dropKind:'status-tarefa', statusTipo:'tarefa', podeAdicionar: k => k !== 'lembretes'};
   }
+  grupos = soColunasFiltradas('tarefas', grupos, ag);
   if(p.visao === 'kanban') return kanbanHTML('tarefas', grupos, ctxK);
   if(p.agrupar === 'nenhum') return listaHTML('tarefas', {itens:lista}, {addFlat:true});
   return listaHTML('tarefas', {grupos}, {vazioGrupo:'Nenhuma tarefa', podeAdicionar: ctxK.podeAdicionar || (() => true)});
@@ -4379,7 +4509,7 @@ function viewRevisao(){
     caixa(c.entrada ? 'warn' : 'ok', c.entrada, 'Entrada para triar', c.entrada ? 'Transforme em tarefa ou projeto, mande para o Futuro ou descarte.' : 'Entrada zerada.',
       c.entrada ? '<button type="button" class="btn" data-act="nav" data-view="entrada">' + ic('inbox',15) + 'Triar</button>' : '') +
     caixa(semProx.length ? 'warn' : 'ok', semProx.length, 'Projetos sem próxima ação', semProx.length ? 'Projeto sem próxima ação é projeto parado. Marque a tarefa que vem agora.' : 'Todo projeto ativo tem uma próxima ação.', '',
-      semProx.length ? '<div class="rev-lista">' + semProx.map(p => linhaProj(p, '<button type="button" class="btn sm prim" data-act="definir-proxima" data-id="' + p.id + '">' + ic('play',14) + 'Definir próxima ação</button>')).join('') + '</div>' : '') +
+      semProx.length ? '<div class="rev-lista">' + semProx.map(p => linhaProj(p, '<button type="button" class="btn sm prim" data-act="definir-proxima" data-pedir="1" data-id="' + p.id + '">' + ic('play',14) + 'Definir próxima ação</button>')).join('') + '</div>' : '') +
     caixa(vencidos.length ? 'venc' : 'ok', vencidos.length, 'Vencidos', vencidos.length ? 'Reagende, conclua ou descarte o que passou do prazo.' : 'Nada vencido.',
       vencidos.length ? '<button type="button" class="btn" data-act="rev-vencidos">' + ic('alert',15) + 'Ver vencidos</button>' : '') +
     caixa(parados.length ? 'warn' : 'ok', parados.length, 'Projetos sem movimento há 14 dias', parados.length ? 'Ainda fazem sentido agora? Atualize ou mande para o Futuro.' : 'Todos os projetos tiveram atividade recente.', '',
@@ -4404,7 +4534,7 @@ function editorCategorias(){
   }).join('');
   // "Sem categoria" é fixa: não se renomeia, não se exclui e fica sempre por último
   const nSem = items().filter(i => ativo(i) && i.tipo && !i.categoriaId).length;
-  const sem = '<div class="erow" title=""Categoria padrão: reúne o que não tem categoria"><span class="hdl" style="visibility:hidden">' + ic('grip',16) + '</span>' +
+  const sem = '<div class="erow" title="Categoria padrão: reúne o que não tem categoria"><span class="hdl" style="visibility:hidden">' + ic('grip',16) + '</span>' +
     '<span class="cat-sem-dot"></span><span class="cat-sem-nm">Sem categoria</span>' +
     '<span class="muted" title="Itens sem categoria">' + nSem + '</span><span class="badge">padrão</span></div>';
   return '<section class="ebox"><h3>Categorias</h3><span class="muted">Agrupam projetos e tarefas por área (ex.: Trabalho, Pessoal). A ordem daqui vale para o menu lateral, os filtros e os agrupamentos.</span>' +
@@ -4627,9 +4757,6 @@ function renderPanel(){
       '<div class="frow"><span class="flabel">Status do projeto</span><div class="fval">' +
         (function(){ const s = statusPorId('projeto', proj.status); return '<button type="button" class="fc st" style="--c:' + esc(s.cor) + '" data-edit="statusProjeto" data-id="' + it.id + '" aria-label="Status do projeto: ' + esc(s.nome) + '. Alterar"><span class="v">' + esc(s.nome) + '</span></button>'; })() +
       '</div></div>' +
-      (!ehLembrete(it) && !concluido(it) && it.secao === 'tarefas' && !concluido(proj) ? '<div class="frow"><span class="flabel">Próxima ação</span><div class="fval">' +
-        (ehProxima(it) ? '<button type="button" class="fc prox" data-act="desmarcar-proxima" data-id="' + proj.id + '">' + ic('play',12) + '<span class="v">É a próxima ação do projeto</span></button>'
-                       : '<button type="button" class="fc vazio" data-act="marcar-proxima" data-id="' + it.id + '">' + ic('play',12) + '<span class="v">Marcar como próxima ação</span></button>') + '</div></div>' : '') +
       '<p class="hint">' + ic('info',13) + '<span>“Status da tarefa” e “Status do projeto” têm listas próprias. A mudança fica no histórico da tarefa e do projeto.</span></p></div>';
   }
   if(it.tipo === 'projeto'){
@@ -4987,7 +5114,14 @@ function onPointerMove(e){
   const alvo = document.elementFromPoint(e.clientX, e.clientY);
   const col = alvo ? alvo.closest('[data-drop]') : null;
   if(col !== colAtual){ if(colAtual) colAtual.classList.remove('over'); colAtual = col; if(colAtual) colAtual.classList.add('over'); }
-  autoRolar(e.clientX, dropbar ? null : $('.kanban'));
+  // o card acompanha o dedo/mouse: dentro de uma coluna do quadro ou no próprio grupo da lista
+  const corpo = col && col.classList.contains('kcol') && ptr.colOrigem && col.parentElement === ptr.colOrigem.parentElement ? $('.kcol-body', col) : null;
+  if(corpo){
+    if(!$$('[data-drag-id]', corpo).some(x => x !== ptr.el)){ if(ptr.el.parentElement !== corpo) corpo.insertBefore(ptr.el, corpo.firstChild); }
+    else reposicionarEm(corpo, ptr.el, e.clientX, e.clientY, 'y', 'data-drag-id');
+  }else if(!ptr.colOrigem && alvo && ptr.listaOrigem.contains(alvo)) reposicionarEm(ptr.listaOrigem, ptr.el, e.clientX, e.clientY, 'y', 'data-drag-id');
+  if(ptr.colOrigem) autoRolar(e.clientX, dropbar ? null : $('.kanban'));
+  else autoRolarV(e.clientY);
 }
 function criarFantasma(el){
   const r = el.getBoundingClientRect();
@@ -5001,6 +5135,10 @@ function criarFantasma(el){
 function ativarDrag(){
   if(!ptr || ptr.ativo) return;
   ptr.ativo = true;
+  // ordem de partida (para saber se o card mudou de posição) e onde ele estava
+  ptr.antes = $$('#view [data-drag-id]').map(x => x.dataset.dragId).join(',');
+  ptr.colOrigem = ptr.el.closest('.kcol');
+  ptr.listaOrigem = ptr.el.parentElement;
   soltarPressao(ptr);
   criarFantasma(ptr.el);
   ptr.el.classList.add('dragging');
@@ -5142,7 +5280,26 @@ function onPointerUp(){
   const c = colAtual;
   if(c){ c.classList.remove('over'); colAtual = null; }
   if(dropbar){ dropbar.remove(); dropbar = null; }
-  if(c) aplicarDrop(c.dataset.dropKind, c.dataset.dropCol, p.id);
+  const ids = $$('#view [data-drag-id]').map(x => x.dataset.dragId);
+  const mudouPosicao = ids.join(',') !== p.antes;
+  const lote = state.ui.modoSel && state.ui.sel.has(p.id) && state.ui.sel.size > 1;
+  // mesma coluna (ou lista): só a posição mudou → ordem personalizada; outra coluna: muda status/data/categoria/projeto
+  const mesmoLugar = p.colOrigem ? c === p.colOrigem : !c;
+  const sec = secaoDaRota(), pr = state.prefs[sec];
+  const salvaOrdem = mudouPosicao && pr && Array.isArray(pr.manual) && (mesmoLugar || pr.ordem === 'manual') && !lote &&
+    (!c || c.classList.contains('kcol'));
+  if(c && !mesmoLugar){ if(lote) aplicarDropLote(c.dataset.dropKind, c.dataset.dropCol); else aplicarDrop(c.dataset.dropKind, c.dataset.dropCol, p.id); }
+  if(salvaOrdem) salvarOrdemManual(sec, ids);
+  else if(mudouPosicao) render();   // devolve o card ao lugar (destino recusado ou pergunta aberta)
+}
+/** Arrastar um card para outra posição cria a ordem "Personalizada" (dá para voltar a qualquer ordem em Ordenar). */
+function salvarOrdemManual(sec, ids){
+  const pr = state.prefs[sec]; if(!pr) return;
+  const antes = {ordem:pr.ordem, manual:(pr.manual || []).slice()};
+  pr.manual = ids.concat((pr.manual || []).filter(id => ids.indexOf(id) === -1));
+  pr.ordem = 'manual';
+  persistirPrefs(); render();
+  if(antes.ordem !== 'manual') toast('Ordem personalizada', () => { pr.ordem = antes.ordem; pr.manual = antes.manual; persistirPrefs(); render(); }, {label:'Alterar ordem', fn:() => sheetOrdem(sec)});
 }
 function aplicarDrop(kind, col, id){
   const it = getItem(id); if(!it) return;
@@ -5188,6 +5345,144 @@ function aplicarDrop(kind, col, id){
 }
 
 /* =========================================================================
+   SELEÇÃO MÚLTIPLA: tocar nos cards marca; a barra aplica a ação a todos (um único "Desfazer")
+   ========================================================================= */
+const selecionados = () => Array.from(state.ui.sel).map(getItem).filter(Boolean);
+function entrarSelecao(id){ state.ui.modoSel = true; if(id) state.ui.sel.add(id); render(); }
+function sairSelecao(){ state.ui.modoSel = false; state.ui.sel.clear(); render(); }
+function alternarSelecao(id){
+  if(state.ui.sel.has(id)) state.ui.sel.delete(id); else state.ui.sel.add(id);
+  vibrar(8);
+  renderSelbar();
+}
+function renderSelbar(){
+  document.body.classList.toggle('modo-sel', !!state.ui.modoSel);
+  let el = $('#selbar');
+  if(!state.ui.modoSel){ if(el) el.remove(); return; }
+  Array.from(state.ui.sel).forEach(id => { if(!getItem(id)) state.ui.sel.delete(id); });
+  if(!el){ el = document.createElement('div'); el.id = 'selbar'; el.className = 'selbar'; el.setAttribute('role', 'toolbar'); el.setAttribute('aria-label', 'Ações para os selecionados'); document.body.appendChild(el); }
+  const n = state.ui.sel.size;
+  const b = (act, icone, rot, cls) => '<button type="button" class="sel-btn' + (cls || '') + '" data-act="' + act + '"' + (n || act === 'sel-todos' ? '' : ' disabled') + '>' + ic(icone, 17) + '<span>' + rot + '</span></button>';
+  el.innerHTML = '<span class="sel-n" aria-live="polite">' + (n ? n + (n > 1 ? ' selecionados' : ' selecionado') : 'Toque nos cards') + '</span>' +
+    '<div class="sel-acoes">' + b('sel-todos','checkSq','Todos') + b('sel-status','target','Status') + b('sel-cat','tag','Categoria') + b('sel-proj','folder','Projeto') +
+      b('sel-data','calendar','Entrega') + b('sel-concluir','check','Concluir') + b('sel-excluir','trash','Excluir',' dngr') + '</div>' +
+    '<button type="button" class="icon-btn" data-act="sel-sair" aria-label="Sair da seleção">' + ic('x',18) + '</button>';
+  $$('#view [data-sel-id]').forEach(x => x.classList.toggle('selecionado', state.ui.sel.has(x.dataset.selId)));
+}
+/** Fim de uma ação em lote: grava, redesenha e oferece desfazer tudo de uma vez. */
+function loteFim(snap, msg){ persistir(); render(); toast(msg, () => restaurar(snap)); }
+const nItens = n => n + (n > 1 ? ' itens' : ' item');
+function loteStatus(sid){
+  const its = selecionados().filter(i => !ehLembrete(i) && i.tipo && statusPorId(i.tipo, sid) && i.status !== sid);
+  if(!its.length) return;
+  const snap = snapshot();
+  its.forEach(i => alterar(i.id, {status:sid}, {semRender:true, forcar:true}));
+  loteFim(snap, nItens(its.length) + ' em ' + statusPorId(its[0].tipo, sid).nome);
+}
+function loteConcluir(){
+  const its = selecionados().filter(i => i.tipo && !concluido(i));
+  if(!its.length){ toast('Os selecionados já estão concluídos'); return; }
+  const snap = snapshot();
+  its.forEach(function(i){
+    if(ehLembrete(i)){ marcarStatus(i, statusFinal('tarefa').id); registrar(i, {icone:'check', texto:'Lembrete concluído'}); return; }
+    if(i.tipo === 'tarefa' && aplicaRecorrenciaEntrega(i)) return;   // recorrente: reabre com a próxima entrega
+    alterar(i.id, {status:statusFinal(i.tipo).id}, {semRender:true, forcar:true});
+  });
+  state.ui.sel.clear();
+  loteFim(snap, nItens(its.length) + (its.length > 1 ? ' concluídos' : ' concluído'));
+}
+/** Categoria em lote com a mesma regra do item: tarefas de projeto seguem o projeto (pergunta uma vez). */
+function loteCategoria(catId){
+  catId = catId && getCat(catId) ? catId : null;
+  const destino = catId ? '“' + nomeCat(catId) + '”' : 'Sem categoria';
+  const its = selecionados().filter(i => i.tipo && !ehLembrete(i));
+  const idsSel = its.map(i => i.id);
+  const deProjeto = its.filter(i => i.tipo === 'tarefa' && i.projetoId && getItem(i.projetoId) && idsSel.indexOf(i.projetoId) === -1);
+  function fazer(modo){
+    const snap = snapshot();
+    its.forEach(function(i){
+      if(deProjeto.indexOf(i) !== -1){
+        if(modo === 'proj') alterar(i.projetoId, {categoriaId:catId}, {semRender:true});
+        else alterar(i.id, {projetoId:null, categoriaId:catId}, {semRender:true});
+      }else if(!(i.tipo === 'tarefa' && i.projetoId && idsSel.indexOf(i.projetoId) !== -1)) alterar(i.id, {categoriaId:catId}, {semRender:true});
+    });
+    loteFim(snap, nItens(its.length) + ' em ' + destino);
+  }
+  if(!deProjeto.length) return fazer();
+  const nProj = deProjeto.map(i => i.projetoId).filter((v, k, a) => a.indexOf(v) === k).length;
+  abrirConfirm({titulo:'Mover para ' + destino, texto:deProjeto.length + (deProjeto.length > 1 ? ' tarefas selecionadas são' : ' tarefa selecionada é') + ' de projeto, e as tarefas de um projeto ficam sempre na categoria dele. O que prefere?',
+    opcoes:[{label:'Mover ' + (nProj > 1 ? 'os ' + nProj + ' projetos inteiros' : 'o projeto inteiro'), valor:'proj', variante:'prim'}, {label:'Tirar essas tarefas dos projetos', valor:'so'}, {label:'Cancelar', valor:null}]
+  }).then(r => { if(r) fazer(r); });
+}
+function loteProjeto(pid){
+  const its = selecionados().filter(i => i.tipo === 'tarefa' && !ehLembrete(i) && (i.projetoId || null) !== pid);
+  const fora = state.ui.sel.size - its.length;
+  if(!its.length){ toast('Só tarefas entram em projetos'); return; }
+  const snap = snapshot();
+  its.forEach(i => alterar(i.id, {projetoId:pid}, {semRender:true}));
+  loteFim(snap, nItens(its.length) + (pid ? ' em “' + nomeProjeto(pid) + '”' : ' sem projeto') + (fora ? ' (' + fora + ' ignorado(s): projetos e lembretes)' : ''));
+}
+function loteData(v){
+  const its = selecionados().filter(i => i.tipo && !ehLembrete(i));
+  if(!its.length){ toast('Lembretes usam Reagendar'); return; }
+  const snap = snapshot();
+  its.forEach(i => alterar(i.id, {dataEntrega:v || null}, {semRender:true}));
+  loteFim(snap, nomeCampo('dataEntrega') + (v ? ' ' + fmtCurta(v) : ' removida') + ' em ' + nItens(its.length));
+}
+function loteExcluir(){
+  const its = selecionados(); if(!its.length) return;
+  abrirConfirm({titulo:'Mover para a lixeira', texto:nItens(its.length) + ' vão para a lixeira e ficam ' + DIAS_LIXEIRA + ' dias antes de sumir. Tarefas de projetos excluídos que não estão na seleção ficam sem projeto.',
+    opcoes:[{label:'Mover ' + nItens(its.length) + ' para a lixeira', valor:'ok', variante:'dngr'}, {label:'Cancelar', valor:null}]
+  }).then(function(r){
+    if(r !== 'ok') return;
+    const snap = snapshot(), ids = its.map(i => i.id), soltas = [];
+    items().forEach(t => { if(t.tipo === 'tarefa' && !ehLembrete(t) && t.projetoId && ids.indexOf(t.projetoId) !== -1 && ids.indexOf(t.id) === -1){ alterar(t.id, {projetoId:null}, {semRender:true}); soltas.push(t.id); } });
+    moverParaLixeira(ids, ids[0], soltas);
+    state.ui.sel.clear();
+    loteFim(snap, nItens(ids.length) + ' na lixeira');
+  });
+}
+/** Arrastar um card selecionado leva todos os selecionados. */
+function aplicarDropLote(kind, col){
+  if(kind === 'categoria' || kind === 'cat-destino') return loteCategoria(col === 'sem' ? null : col);
+  if(kind === 'projeto') return loteProjeto(col === 'sem' ? null : col);
+  if(kind === 'converter'){ toast('Converta um item de cada vez'); return; }
+  if(kind === 'status-projeto' || kind === 'status-tarefa') return loteStatus(col);
+  if(kind === 'faixa'){
+    const snap = snapshot(), nova = col === 'semdata' ? null : primeiroDiaFaixa(col);
+    let n = 0;
+    selecionados().forEach(function(i){
+      if(ehLembrete(i)) return;
+      const d = state.ui.rota.view === 'hoje' ? motivoHoje(i) : dataDeterminante(i);
+      const campo = d ? d.campo : 'dataEntrega';
+      if(i[campo] === nova) return;
+      if(state.ui.rota.view === 'hoje') state.ui.fixadosHoje[i.id] = campo;
+      alterar(i.id, {[campo]:nova}, {semRender:true}); n++;
+    });
+    return loteFim(snap, nItens(n) + ' reagendado(s)');
+  }
+}
+function selTodos(){
+  const vis = $$('#view [data-sel-id]').map(x => x.dataset.selId);
+  const todos = vis.length && vis.every(id => state.ui.sel.has(id));
+  vis.forEach(id => { if(todos) state.ui.sel.delete(id); else state.ui.sel.add(id); });
+  renderSelbar();
+}
+function selMenuStatus(el){
+  const tipos = selecionados().filter(i => !ehLembrete(i) && i.tipo).map(i => i.tipo).filter((v, k, a) => a.indexOf(v) === k);
+  if(tipos.length !== 1){ toast(tipos.length ? 'Selecione só tarefas ou só projetos para mudar o status' : 'Lembretes não têm status'); return; }
+  abrirMenu(el, [{titulo:'Status de ' + nItens(state.ui.sel.size)}].concat(listaStatus(tipos[0]).map(s => ({id:s.id, label:s.nome, cor:s.cor, acao:() => loteStatus(s.id)}))));
+}
+// no modo de seleção, tocar num card (em qualquer lugar dele) marca ou desmarca
+document.addEventListener('click', function(e){
+  if(!state.ui.modoSel || suprimirClique) return;
+  const alvo = e.target.closest && e.target.closest('#view [data-sel-id]');
+  if(!alvo) return;
+  e.preventDefault(); e.stopPropagation();
+  alternarSelecao(alvo.dataset.selId);
+}, true);
+
+/* =========================================================================
    MÓDULO 20 — EVENTOS
    ========================================================================= */
 /** "+ Adicionar": cria já com o tipo e o que a coluna/grupo representa (status, projeto, categoria ou data). */
@@ -5231,6 +5526,7 @@ function menuDoItem(btn, id){
   const it = getItem(id); if(!it) return;
   const ancora = () => $('[data-act="menu-item"][data-id="' + id + '"]') || btn;
   const m = [{id:'abrir', label:'Abrir card', icone:'arrowR', acao:() => abrirItem(id, true)},
+             {id:'sel', label:'Selecionar vários', icone:'multi', acao:() => entrarSelecao(id)},
              {id:'lay', label:'Personalizar campos do card', icone:'sliders', acao:() => sheetLayout('card')}];
   if(it.tipo === 'projeto' && it.secao === 'projetos') m.push({id:'pag', label:'Abrir página do projeto', icone:'folder', acao:() => irPara('#/projetos/' + id)});
   // "Mover para…": caminho principal no celular (sem depender de arrastar)
@@ -5326,7 +5622,7 @@ const ACOES = {
   'esvaziar-lixeira': () => esvaziarLixeira(),
   'rev-vencidos': () => { state.prefs.hoje.periodo = 'vencidos'; persistirPrefs(); irPara('#/hoje'); },
   /* próxima ação */
-  'definir-proxima': (d, el) => escolherProxima(el, d.id),
+  'definir-proxima': (d, el) => escolherProxima(el, d.id, {pedirData: !!d.pedir}),
   'marcar-proxima': d => { const t = getItem(d.id); if(t && t.projetoId) definirProxima(t.projetoId, t.id); },
   'desmarcar-proxima': d => definirProxima(d.id, null),
   /* "Mover para…" */
@@ -5443,6 +5739,24 @@ const ACOES = {
   'sub-add': (d, el) => { const i = el.parentElement.querySelector('input'); if(i) criarSubtarefa(d.pid, i.value); },
   'nova-tarefa': () => { const t = criarItem({tipo:'tarefa', secao:'tarefas', titulo:'Nova tarefa', dataEntrega:hojeISO()}); abrirItem(t.id); setTimeout(() => { const i = $('#panel textarea[data-field="titulo"]'); if(i){ i.focus(); i.select(); } }, 280); },
   'novo-projeto': d => { const p = criarItem({tipo:'projeto', secao:'projetos', titulo:'Novo projeto', categoriaId: d && getCat(d.cat) ? d.cat : null}); irPara('#/projetos/' + p.id); },
+  'tog-sel': () => state.ui.modoSel ? sairSelecao() : entrarSelecao(),
+  'sel-sair': () => sairSelecao(),
+  'sel-todos': () => selTodos(),
+  'sel-status': (d, el) => selMenuStatus(el),
+  'sel-cat': (d, el) => abrirMenu(el, [{titulo:'Categoria'}].concat(categorias().map(c => ({id:c.id, label:c.nome, cor:c.cor, acao:() => loteCategoria(c.id)})))
+    .concat([{id:'sem', label:'Sem categoria', acao:() => loteCategoria(null)}])),
+  'sel-proj': (d, el) => abrirMenu(el, [{titulo:'Projeto'}, {id:'sem', label:'Sem projeto', acao:() => loteProjeto(null)}]
+    .concat(projetosVinculaveis().map(p => ({id:p.id, label:p.titulo, icone:'folder', acao:() => loteProjeto(p.id)})))),
+  'sel-data': (d, el) => abrirDatePicker(el, {titulo:nomeCampo('dataEntrega') + ' de ' + nItens(state.ui.sel.size), valor:null, escolher:v => loteData(v)}),
+  'sel-concluir': () => loteConcluir(),
+  'sel-excluir': () => loteExcluir(),
+  'tog-vazios': () => { state.prefs.mostrarVazios = !state.prefs.mostrarVazios; persistirPrefs(); render(); toast(state.prefs.mostrarVazios ? 'Campos vazios aparecem em cada card' : 'Campos vazios agrupados em “+ Campos”'); },
+  'sheet-exibicao': d => sheetExibicao(d.sec),
+  'cat-atalho': d => {
+    const p = state.prefs[d.sec]; if(!p) return;
+    p.categorias = !d.cat || (p.categorias.length === 1 && p.categorias[0] === d.cat) ? [] : [d.cat];
+    persistirPrefs(); render();
+  },
   'nav-cat': d => { fecharSheet(); irPara('#/categoria/' + d.cat); },
   'tog-cat-sb': d => {
     const a = state.prefs.catsAbertas, i = a.indexOf(d.cat);
@@ -5585,6 +5899,7 @@ document.addEventListener('keydown', function(e){
     if(popAtual){ fecharPop(); return; }
     if(sheetAtual){ fecharSheet(); return; }
     if(state.ui.addCol){ state.ui.addCol = null; render(); return; }
+    if(state.ui.modoSel){ sairSelecao(); return; }
     if(state.ui.rota.item){ fecharPainel(); return; }
     if(state.prefs.sidebarExp && window.innerWidth < 1024){ state.prefs.sidebarExp = false; persistirPrefs(); render(); return; }
     if(state.ui.busca){ state.ui.busca = ''; render(); return; }
@@ -6236,7 +6551,7 @@ function renderView(){
   const kb0 = $('.kanban', vp), kl = kb0 ? kb0.scrollLeft : 0;
   const lw0 = $('.lista-wrap', vp), ll = lw0 ? lw0.scrollLeft : 0;
   vp.innerHTML = viewHTML();
-  const kb = $('.kanban', vp); if(kb){ kb.scrollLeft = kl; ligaDots(kb); }
+  $$('.kanban', vp).forEach(function(kb, i){ if(i === 0) kb.scrollLeft = kl; ligaDots(kb); });   // a página da categoria pode ter dois quadros
   const lw = $('.lista-wrap', vp); if(lw) lw.scrollLeft = ll;
   const inp = $('#addColInput'); if(inp) inp.focus({preventScroll:true});
   $$('textarea.inp-title, #view [data-composer]').forEach(autoTam);
@@ -6252,7 +6567,7 @@ function render(){
   const sel = state.ui.focar || (!emOverlay ? seletorDe(ativoEl) : null);
   const escopo = ativoEl && ativoEl.closest ? (ativoEl.closest('#panel') ? '#panel' : ativoEl.closest('#view') ? '#view' : ativoEl.closest('#topbar') ? '#topbar' : ativoEl.closest('#sidebar') ? '#sidebar' : null) : null;
   state.ui.focar = null;
-  renderSidebar(); renderBottombar(); renderTopbar(); renderView(); renderPanel();
+  renderSidebar(); renderBottombar(); renderTopbar(); renderView(); renderPanel(); renderSelbar();
   atualizaSheet();
   $$('#panel textarea.inp-title, #panel [data-composer]').forEach(autoTam);
   document.documentElement.style.setProperty('--tb-h', $('#topbar').offsetHeight + 'px');   // abas do kanban grudam logo abaixo
@@ -6277,6 +6592,7 @@ function aoMudarHash(){
   if(trocouTela){
     // a barra superior encolhida muda a altura da página: guarda e devolve os dois juntos
     rolagemPorTela[chaveTela(antes)] = {y:window.scrollY, recolhida:$('#topbar').classList.contains('recolhida')};
+    state.ui.modoSel = false; state.ui.sel.clear();
     state.ui.recemConcluidos.clear(); state.ui.fixadosHoje = {}; state.ui.addCol = null;
     $('#topbar').classList.toggle('recolhida', !!(guardada && guardada.recolhida));
     if(state.ui.rota.view !== 'concluidos') state.ui.buscaConcl = '';
