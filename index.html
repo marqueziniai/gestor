@@ -476,6 +476,19 @@ html.quebra .sb-item{align-items:center;line-height:1.3;padding-top:9px;padding-
 .dropbar .dz-t{width:100%;font-size:11px;font-weight:650;text-transform:uppercase;letter-spacing:.05em;color:var(--text-3);padding:2px 4px 0}
 .dropbar .dz.conv{border-color:var(--accent);color:var(--accent);font-weight:600}
 body:has(.dropbar) .fab{visibility:hidden}
+/* atualizar: logo clicável e indicador de "puxar para atualizar" */
+button.sb-logo{cursor:pointer;transition:transform var(--t)}
+@media (hover:hover){button.sb-logo:hover{transform:rotate(-8deg) scale(1.05)}}
+.puxa{position:fixed;left:50%;top:calc(10px + env(safe-area-inset-top));z-index:95;width:40px;height:40px;margin-left:-20px;border-radius:50%;
+  background:var(--surface);border:1px solid var(--border-2);box-shadow:var(--shadow-2);display:grid;place-items:center;color:var(--text-3);
+  transform:translateY(calc(var(--p, 0) * 60px)) scale(calc(.6 + var(--p, 0) * .4));opacity:calc(.3 + var(--p, 0) * .7);transition:opacity 150ms,color 150ms}
+.puxa .puxa-ic{display:grid;transform:rotate(calc(var(--p, 0) * 270deg))}
+.puxa.pronto,.puxa.carregando{color:var(--accent);border-color:var(--accent)}
+.puxa.carregando{transform:translateY(60px);opacity:1;transition:transform 180ms,opacity 150ms}
+.puxa.carregando .puxa-ic{animation:puxaGira .8s linear infinite}
+.puxa.saindo{opacity:0;transform:translateY(0) scale(.6);transition:transform 180ms,opacity 180ms}
+@keyframes puxaGira{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.puxa.carregando .puxa-ic{animation-duration:2.4s}}
 /* caixas de confirmação: botões grandes, fáceis de tocar */
 .sheet [data-conf]{min-height:52px;font-size:15.5px;font-weight:600}
 /* comportamento de app no toque: sem seleção de texto nem menu de copiar ao pressionar (campos de digitação continuam) */
@@ -3786,7 +3799,7 @@ function renderSidebar(){
   sb.className = 'sidebar' + (state.prefs.sidebarCompacta ? ' compacta' : '') + (state.prefs.sidebarExp ? ' exp' : '');
   const rotToggle = compacta ? 'Expandir menu' : 'Compactar menu';
   sb.innerHTML =
-    '<div class="sb-head"><span class="sb-logo" aria-hidden="true">G</span><span class="sb-name">Gestor</span>' +
+    '<div class="sb-head"><button type="button" class="sb-logo" data-act="atualizar" aria-label="Atualizar o app" data-tip="Atualizar (sincroniza e recarrega)" data-tip-sempre="1">G</button><span class="sb-name">Gestor</span>' +
       '<button type="button" class="icon-btn sm sb-toggle" data-act="toggle-sidebar" aria-label="' + rotToggle + '" aria-expanded="' + (!compacta) + '" data-tip="' + rotToggle + '" data-tip-sempre="1">' + ic(compacta ? 'chevsR' : 'chevsL', 16) + '</button></div>' +
     '<button type="button" class="sb-new" data-act="captura" data-tip="Novo item (N)" aria-label="Novo item">' + ic('plus',17) + '<span class="lbl">Novo item</span></button>' +
     '<div class="sb-scroll"><nav aria-label="Seções">' + nav + '</nav>' +
@@ -5758,6 +5771,7 @@ const ACOES = {
   'sel-data': (d, el) => abrirDatePicker(el, {titulo:nomeCampo('dataEntrega') + ' de ' + nItens(state.ui.sel.size), valor:null, escolher:v => loteData(v)}),
   'sel-concluir': () => loteConcluir(),
   'sel-excluir': () => loteExcluir(),
+  'atualizar': () => forcarAtualizacao(),
   'tog-vazios': () => { state.prefs.mostrarVazios = !state.prefs.mostrarVazios; persistirPrefs(); render(); toast(state.prefs.mostrarVazios ? 'Campos vazios aparecem em cada card' : 'Campos vazios agrupados em “+ Campos”'); },
   'sheet-exibicao': d => sheetExibicao(d.sec),
   'cat-atalho': d => {
@@ -6637,6 +6651,80 @@ function ajustaTeclado(){
   document.documentElement.classList.toggle('teclado', kb > 80);
 }
 /** Celular: ao rolar para baixo, ferramentas e chips da topbar recolhem; ao rolar para cima, voltam. */
+/**
+ * Atualizar (logo ou puxar para baixo no celular): envia o que falta para a nuvem, procura versão nova do app e recarrega.
+ * Nada se perde: o que está sendo digitado é gravado antes, e a sincronização termina antes do recarregamento.
+ */
+let atualizando = false;
+async function forcarAtualizacao(){
+  if(atualizando) return;
+  atualizando = true;
+  indicadorAtualizar('carregando', 1);
+  const espera = ms => new Promise(r => setTimeout(r, ms));
+  try{
+    const a = document.activeElement;
+    if(a && a !== document.body && a.blur) a.blur();   // grava o campo em edição (evento change)
+    if(nuvemSessao() && navigator.onLine){
+      for(let i = 0; i < 40 && nuvem.rodando; i++) await espera(100);   // deixa terminar um envio em andamento
+      await Promise.race([nuvemSincronizar({perguntar:false}), espera(5000)]);
+      for(let i = 0; i < 40 && nuvem.rodando; i++) await espera(100);
+    }
+    const reg = 'serviceWorker' in navigator ? await navigator.serviceWorker.getRegistration() : null;
+    if(reg) await Promise.race([reg.update().catch(() => {}), espera(3000)]);
+  }catch(e){ console.warn('Atualizar', e); }
+  location.reload();
+}
+/** Indicador no topo: estado 'puxando' (p = 0..1 do caminho até o limiar) ou 'carregando'. */
+function indicadorAtualizar(estado, p){
+  let el = $('#puxaAtualizar');
+  if(!estado){ if(el){ el.classList.add('saindo'); setTimeout(() => { if(el.classList.contains('saindo')) el.remove(); }, 200); } return; }
+  if(!el){
+    el = document.createElement('div'); el.id = 'puxaAtualizar'; el.className = 'puxa';
+    el.setAttribute('role', 'status'); el.setAttribute('aria-live', 'polite');
+    el.innerHTML = '<span class="puxa-ic">' + ic('refresh', 18) + '</span><span class="sr-only"></span>';
+    document.body.appendChild(el);
+  }
+  el.classList.remove('saindo');
+  el.classList.toggle('pronto', estado === 'puxando' && p >= 1);
+  el.classList.toggle('carregando', estado === 'carregando');
+  el.style.setProperty('--p', Math.min(1, p));
+  $('.sr-only', el).textContent = estado === 'carregando' ? 'Atualizando…' : p >= 1 ? 'Solte para atualizar' : '';
+}
+/** Celular: no topo da página, puxar para baixo e soltar atualiza (o gesto nativo do navegador fica desligado). */
+function ligaPuxarAtualizar(){
+  const LIMIAR = 80;
+  let y0 = null, x0 = 0, dy = 0, ativo = false, vibrou = false;
+  const bloqueado = t => !!(sheetAtual || popAtual || menuAtual || state.ui.rota.item || state.ui.modoSel || $('#boasVindas') ||
+    (t.closest && t.closest('input, textarea, select, .sheet, .panel, .menu, .pop, .dropbar, .selbar, [contenteditable="true"]')));
+  document.addEventListener('touchstart', function(e){
+    y0 = null; ativo = false; dy = 0;
+    if(atualizando || e.touches.length !== 1 || window.scrollY > 0 || bloqueado(e.target)) return;
+    y0 = e.touches[0].clientY; x0 = e.touches[0].clientX;
+  }, {passive:true});
+  document.addEventListener('touchmove', function(e){
+    if(y0 === null) return;
+    if(ptr && ptr.ativo){ y0 = null; indicadorAtualizar(null); return; }   // arrastando um card: não é atualizar
+    const t = e.touches[0], ddy = t.clientY - y0, ddx = t.clientX - x0;
+    if(!ativo){
+      if(Math.abs(ddx) > 12 && Math.abs(ddx) > Math.abs(ddy)){ y0 = null; return; }   // gesto de lado (kanban, deslizar card)
+      if(ddy < 8 || window.scrollY > 0) return;
+      ativo = true;
+    }
+    dy = Math.max(0, ddy - 8);
+    indicadorAtualizar('puxando', dy / LIMIAR);
+    if(dy >= LIMIAR && !vibrou){ vibrar(10); vibrou = true; }
+    if(dy < LIMIAR) vibrou = false;
+  }, {passive:true});
+  const fim = function(){
+    if(y0 === null && !ativo) return;
+    const pronto = ativo && dy >= LIMIAR;
+    y0 = null; ativo = false; dy = 0;
+    if(pronto) forcarAtualizacao(); else indicadorAtualizar(null);
+  };
+  document.addEventListener('touchend', fim, {passive:true});
+  // toque cancelado pelo sistema (ligação, gesto do aparelho): só recolhe o indicador
+  document.addEventListener('touchcancel', function(){ y0 = null; ativo = false; dy = 0; indicadorAtualizar(null); }, {passive:true});
+}
 function ligaRecolherTopbar(){
   let ultimoY = window.scrollY, acumulado = 0, trava = 0;
   window.addEventListener('scroll', function(){
@@ -6692,6 +6780,7 @@ function boot(){
     ajustaTeclado();
   }
   ligaRecolherTopbar();
+  ligaPuxarAtualizar();
   // as abas do kanban grudam logo abaixo da barra superior, que encolhe ao rolar: acompanha a altura real dela
   if('ResizeObserver' in window) new ResizeObserver(() => document.documentElement.style.setProperty('--tb-h', $('#topbar').offsetHeight + 'px')).observe($('#topbar'));
   render();
