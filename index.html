@@ -1229,7 +1229,7 @@ function estruturaPadrao(){
 function prefsPadrao(){
   return {
     versao:4, tema:'auto', sidebarCompacta:false, sidebarExp:false, listaQuebra:true, larguras:{}, dicas:{swipe:false},
-    entrada:{aba:'triagem', tipos:[], categorias:[], ordem:'criacao-desc', agrupar:'nenhum', colapsados:[]},
+    entrada:{aba:'triagem', tipos:[], categorias:[], dtIni:'', dtFim:'', ordem:'criacao-desc', agrupar:'nenhum', colapsados:[]},
     hoje:{visao:'lista', agrupar:'faixa', periodo:'hoje-vencidos', custIni:'', custFim:'', datas:['lemb','entrega'], tipos:['projeto','tarefa','lemb'], categorias:[], ordem:'data-asc', manual:[], colapsados:[]},
     projetos:{visao:'kanban', agrupar:'status', statusF:[], categorias:[], dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
     tarefas:{visao:'lista', agrupar:'status', vinculo:'todas', lembF:'todas', statusF:[], categorias:[], projetosF:[], dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
@@ -3566,29 +3566,28 @@ function larguraUtil(){
   const cs = getComputedStyle(v);
   return v.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight);
 }
-/** O que o item criado por "+ Adicionar" herda naquela coluna/grupo. */
+/** O que o item criado por "+ Adicionar" herda: os filtros da tela e, por cima, o que a coluna/grupo representa. */
 function heranca(sec, col){
-  const r = state.ui.rota, b = {};
-  if(sec === 'projetos'){ b.tipo = 'projeto'; b.secao = 'projetos'; if(statusPorId('projeto', col)) b.status = col; else if(getCat(col)) b.categoriaId = col; }
-  else if(sec === 'projeto'){ const p = getItem(r.id); Object.assign(b, {tipo:'tarefa', secao:'tarefas', projetoId:p ? p.id : null}); if(statusPorId('tarefa', col)) b.status = col; }
+  const b = padroesDoContexto(sec);
+  if(sec === 'projetos'){ if(statusPorId('projeto', col)) b.status = col; else if(getCat(col)) b.categoriaId = col; else if(col === 'sem') b.categoriaId = null; }
+  else if(sec === 'projeto' || sec === 'categoria'){ if(statusPorId(b.tipo, col)) b.status = col; }
   else if(sec === 'tarefas'){
-    // em Tarefas, a entrega padrão é o dia de hoje (no agrupamento por faixa, o primeiro dia da faixa; em "Sem data", nenhuma)
-    Object.assign(b, {tipo:'tarefa', secao:'tarefas', dataEntrega:hojeISO()});
+    // em Tarefas, a entrega padrão é hoje (ou o dia do intervalo filtrado); no agrupamento por faixa, o primeiro dia da faixa; em "Sem data", nenhuma
     const ag = state.prefs.tarefas.agrupar === 'nenhum' ? 'status' : state.prefs.tarefas.agrupar;
     if(ag === 'status' && statusPorId('tarefa', col)) b.status = col;
-    else if(ag === 'projeto' && col !== 'sem' && getItem(col)) b.projetoId = col;
-    else if(ag === 'categoria' && col !== 'sem' && getCat(col)) b.categoriaId = col;
+    else if(ag === 'projeto'){ if(col !== 'sem' && getItem(col)) b.projetoId = col; else delete b.projetoId; }
+    else if(ag === 'categoria'){ b.categoriaId = col !== 'sem' && getCat(col) ? col : null; if(b.projetoId && (getItem(b.projetoId).categoriaId || null) !== b.categoriaId) delete b.projetoId; }
     else if(ag === 'faixa') b.dataEntrega = FAIXAS.some(f => f[0] === col) ? primeiroDiaFaixa(col) : null;
   }
   else if(sec === 'hoje'){
-    // o que a coluna representa: faixa de data, categoria, projeto ou tipo (a entrega padrão é hoje)
-    const ag = state.prefs.hoje.agrupar || 'faixa';
-    Object.assign(b, {tipo:'tarefa', secao:'tarefas', dataEntrega: FAIXAS.some(f => f[0] === col) ? primeiroDiaFaixa(col) : hojeISO()});
-    if(ag === 'categoria' && getCat(col)) b.categoriaId = col;
+    // o que a coluna representa: faixa de data, categoria, projeto ou tipo
+    const ag = state.prefs.hoje.agrupar || 'faixa', dk = 'dataLembrete' in b ? 'dataLembrete' : 'dataEntrega';
+    if(FAIXAS.some(f => f[0] === col)) b[dk] = primeiroDiaFaixa(col);
+    if(ag === 'categoria') b.categoriaId = getCat(col) ? col : null;
     if(ag === 'projeto' && col !== 'sem' && getItem(col)) b.projetoId = col;
-    if(ag === 'tipo' && col === 'projeto') Object.assign(b, {tipo:'projeto', secao:'projetos'});
+    if(ag === 'tipo') Object.assign(b, col === 'projeto' ? {tipo:'projeto', secao:'projetos'} : {tipo:'tarefa', secao:'tarefas'});
+    if(b.tipo === 'projeto') delete b.projetoId;
   }
-  else if(sec === 'categoria'){ Object.assign(b, {tipo:'projeto', secao:'projetos', categoriaId: getCat(r.id) ? r.id : null}); if(statusPorId('projeto', col)) b.status = col; }
   return b;
 }
 function rascunhoHTML(sec, col, rotuloCol){
@@ -3597,7 +3596,7 @@ function rascunhoHTML(sec, col, rotuloCol){
   if(b.status){ const s = statusPorId(b.tipo, b.status); chips.push('<span class="fc st" style="--c:' + esc(s.cor) + '"><span class="v">' + esc(s.nome) + '</span></span>'); }
   const cat = b.categoriaId || (b.projetoId && getItem(b.projetoId) ? getItem(b.projetoId).categoriaId : null);
   if(cat && getCat(cat)) chips.push('<span class="fc"><span class="dot" style="background:' + esc(getCat(cat).cor) + '"></span><span class="v">' + esc(nomeCat(cat)) + '</span></span>');
-  if(b.dataEntrega) chips.push('<span class="fc">' + ic('calendar',12) + '<span class="rot">' + esc(rotuloCurto('dataEntrega')) + '</span><span class="v">' + esc(fmtCurta(b.dataEntrega)) + '</span></span>');
+  ['dataEntrega','dataLembrete'].forEach(k => { if(b[k]) chips.push('<span class="fc">' + ic(k === 'dataLembrete' ? 'bell' : 'calendar',12) + '<span class="rot">' + esc(rotuloCurto(k)) + '</span><span class="v">' + esc(fmtCurta(b[k])) + '</span></span>'); });
   const tipo = b.tipo === 'projeto' ? 'Projeto' : 'Tarefa';
   return '<div class="card rascunho"><div class="c-meta"><span class="c-tipo"><span class="v">Novo · ' + tipo + '</span></span></div>' +
     '<label class="sr-only" for="addColInput">Título do novo item em ' + esc(rotuloCol) + '</label>' +
@@ -3892,7 +3891,7 @@ function btnVisao(sec){
 /** O que a barra de ferramentas de cada seção oferece (vale também para o sheet "Filtros" do celular). */
 function optsFerramentas(sec){
   if(sec === 'projeto') return {filtros:false};   // "Ver concluídos" fica ao lado de "Tarefas do projeto"
-  if(sec === 'entrada') return state.prefs.entrada.aba === 'futuro' ? {visao:false, agruparFuturo:true} : {visao:false, filtros:false, ordem:false};
+  if(sec === 'entrada') return state.prefs.entrada.aba === 'futuro' ? {visao:false, agruparFuturo:true} : {visao:false, ordem:false};
   if(sec === 'projetos') return {agrupar:true, concluidos:true};
   if(sec === 'categoria') return {concluidos:true};
   if(sec === 'hoje') return {agrupar:true};
@@ -3987,7 +3986,11 @@ function renderTopbar(){
   let titulo = SECOES[r.view] ? SECOES[r.view].nome : PAGINAS[r.view] ? PAGINAS[r.view].nome : 'Estrutura';
   let sub = '', voltar = '', tools = '', chips = '';
   // atalho de categorias nas seções com filtro de categoria (em Entrada, só no Futuro)
-  const catSec = r.view === 'entrada' ? (state.prefs.entrada.aba === 'futuro' ? 'entrada' : null) : (['hoje','projetos','tarefas'].indexOf(r.view) !== -1 && !r.id ? r.view : null);
+  const catSec = ['entrada','hoje','projetos','tarefas'].indexOf(r.view) !== -1 && !r.id ? r.view : null;
+  // criar pela tela (no celular, pelo botão +): já com o que os filtros dela indicam
+  const tipoNovo = secDaTela() ? padroesDoContexto(secDaTela()).tipo : null;
+  const rotNovo = tipoNovo === 'projeto' ? 'Novo projeto' : tipoNovo === 'tarefa' ? 'Nova tarefa' : 'Capturar';
+  const btnNovo = ehCelular() ? '' : '<button type="button" class="btn prim" data-act="novo-ctx">' + ic('plus',15) + rotNovo + '</button>';
   const cats = catSec ? '<div class="tb-cats" role="group" aria-label="Filtrar por categoria">' + chipsCategorias(catSec) + '</div>' : '';
   if(r.view === 'projetos' && r.id){
     const p = getItem(r.id);
@@ -4001,26 +4004,26 @@ function renderTopbar(){
     tools = '<div class="seg" role="group" aria-label="Classificação da Entrada">' +
       '<button type="button" class="' + (p.aba === 'triagem' ? 'on' : '') + '" aria-pressed="' + (p.aba === 'triagem') + '" data-act="aba-entrada" data-v="triagem">' + ic('inbox',15) + 'Triagem <span class="cnt">' + c.entrada + '</span></button>' +
       '<button type="button" class="' + (p.aba === 'futuro' ? 'on' : '') + '" aria-pressed="' + (p.aba === 'futuro') + '" data-act="aba-entrada" data-v="futuro">' + ic('archive',15) + 'Futuro <span class="cnt">' + c.futuro + '</span></button></div>' +
-      (ehCelular() ? '' : '<button type="button" class="btn prim" data-act="captura">' + ic('plus',15) + 'Capturar</button>') + ferramentas('entrada');
-    if(p.aba === 'futuro') chips = chipsFiltros('entrada');
+      btnNovo + ferramentas('entrada');
+    chips = chipsFiltros('entrada');
   }else if(r.view === 'categoria'){
     const cat = r.id === 'sem' ? null : getCat(r.id);
     const n = projetosDaCategoria(r.id).filter(p => !concluido(p)).length;
     titulo = cat ? cat.nome : 'Sem categoria';
     sub = 'Categoria · ' + n + (n === 1 ? ' projeto ativo' : ' projetos ativos');
-    tools = ferramentas('categoria');
+    tools = btnNovo + ferramentas('categoria');
     chips = chipsFiltros('categoria');
   }else if(r.view === 'hoje'){
     sub = c.hoje + (c.hoje === 1 ? ' item' : ' itens');
-    tools = ferramentas('hoje');
+    tools = btnNovo + ferramentas('hoje');
     chips = chipsFiltrosHoje();
   }else if(r.view === 'projetos'){
     sub = c.projetos + (c.projetos === 1 ? ' projeto aberto' : ' projetos abertos') + (c.revisao ? ' · ' + c.revisao + ' sem próxima ação' : '');
-    tools = ferramentas('projetos');
+    tools = btnNovo + ferramentas('projetos');
     chips = chipsFiltros('projetos');
   }else if(r.view === 'tarefas'){
     sub = c.tarefas + (c.tarefas === 1 ? ' tarefa aberta' : ' tarefas abertas');
-    tools = ferramentas('tarefas');
+    tools = btnNovo + ferramentas('tarefas');
     chips = chipsVinculo() + chipsFiltros('tarefas');
   }else if(r.view === 'concluidos'){
     const q = r.q || {}, de = q.de && SECOES[q.de] ? q.de : null;
@@ -4049,6 +4052,7 @@ function renderTopbar(){
     // ferramentas e chips recolhem juntos ao rolar para baixo no celular
     '<div class="tb-extra"><div>' + (tools ? '<div class="tb-tools">' + tools + '</div>' : '<div style="height:10px"></div>') + cats +
     (chips ? '<div class="tb-chips">' + chips + '</div>' : '') + '</div></div>';
+  const fab = $('#fab'); if(fab) fab.setAttribute('aria-label', rotNovo === 'Capturar' ? 'Captura rápida (novo item)' : rotNovo);
 }
 
 /* =========================================================================
@@ -4058,10 +4062,12 @@ function contaFiltrosHoje(){
   const p = state.prefs.hoje;
   return (p.periodo !== 'hoje-vencidos' ? 1 : 0) + (p.datas.length !== 2 ? 1 : 0) + (p.tipos.length !== 3 ? 1 : 0) + (p.categorias.length ? 1 : 0);
 }
+/** Na triagem da Entrada os itens ainda não têm tipo: o filtro de tipo só vale no Futuro. */
+const tiposValem = sec => !(sec === 'entrada' && state.prefs.entrada.aba !== 'futuro');
 function contaFiltros(sec){
   const p = state.prefs[sec]; if(!p) return 0;
   let n = 0;
-  ['tipos','statusF','categorias','projetosF'].forEach(k => { if(p[k] && p[k].length) n++; });
+  ['tipos','statusF','categorias','projetosF'].forEach(k => { if(p[k] && p[k].length && (k !== 'tipos' || tiposValem(sec))) n++; });
   if(p.dtIni || p.dtFim) n++;
   if(sec === 'tarefas' && p.vinculo !== 'todas') n++;
   if(sec === 'tarefas' && p.lembF !== 'todas') n++;
@@ -4085,7 +4091,7 @@ function chipsFiltrosHoje(){
 function chipsFiltros(sec){
   const p = state.prefs[sec], out = [];
   const nt = {projeto:'Projetos', tarefa:'Tarefas', sem:'Sem tipo'};
-  (p.tipos || []).forEach(t => out.push('<span class="chip">' + esc(nt[t]) + chipX('rm-arr','data-sec="' + sec + '" data-k="tipos" data-v="' + t + '"', nt[t]) + '</span>'));
+  (tiposValem(sec) ? p.tipos || [] : []).forEach(t => out.push('<span class="chip">' + esc(nt[t]) + chipX('rm-arr','data-sec="' + sec + '" data-k="tipos" data-v="' + t + '"', nt[t]) + '</span>'));
   const tipoSt = sec === 'tarefas' ? 'tarefa' : 'projeto';
   (p.statusF || []).forEach(function(sid){
     const s = statusPorId(tipoSt, sid); if(!s) return;
@@ -4146,7 +4152,7 @@ function corpoFiltros(sec){
     h += '<div class="sect-t">Lembretes</div><div class="opt-list" role="radiogroup">' +
       [['todas','Mostrar tarefas e lembretes'],['comuns','Só tarefas'],['lemb','Só lembretes']].map(x => optRadio(x[1], p.lembF === x[0], 'data-act="set-lembf" data-v="' + x[0] + '"')).join('') + '</div>';
   }
-  if(sec === 'entrada'){
+  if(sec === 'entrada' && tiposValem(sec)){
     h += '<div class="sect-t">Tipo</div><div class="opt-list">' + [['tarefa','Tarefas'],['projeto','Projetos'],['sem','Sem tipo']].map(x =>
       optCheck(x[1], p.tipos.indexOf(x[0]) !== -1, 'data-act="tog-arr" data-sec="entrada" data-k="tipos" data-v="' + x[0] + '"')).join('') + '</div>';
   }
@@ -4160,7 +4166,7 @@ function corpoFiltros(sec){
       projetos().filter(x => x.secao !== 'entrada').map(x => optCheck(x.titulo + (concluido(x) ? ' (concluído)' : ''), p.projetosF.indexOf(x.id) !== -1, 'data-act="tog-arr" data-sec="tarefas" data-k="projetosF" data-v="' + x.id + '"')).join('') + '</div>';
   }
   if(sec !== 'categoria') h += blocoCategorias(sec);
-  if(sec !== 'entrada'){
+  {
     h += '<div class="sect-t">Intervalo de datas</div><div style="display:flex;gap:8px">' +
       '<div class="field" style="flex:1"><label for="dI' + sec + '">De</label><input class="inp" type="date" id="dI' + sec + '" data-act="set-cust" data-sec="' + sec + '" data-k="dtIni" value="' + esc(p.dtIni) + '"></div>' +
       '<div class="field" style="flex:1"><label for="dF' + sec + '">Até</label><input class="inp" type="date" id="dF' + sec + '" data-act="set-cust" data-sec="' + sec + '" data-k="dtFim" value="' + esc(p.dtFim) + '"></div></div>' +
@@ -4171,7 +4177,7 @@ function corpoFiltros(sec){
 function aplicaFiltros(arr, sec){
   const p = state.prefs[sec];
   return arr.filter(function(it){
-    if(p.tipos && p.tipos.length && p.tipos.indexOf(it.tipo || 'sem') === -1) return false;
+    if(p.tipos && p.tipos.length && tiposValem(sec) && p.tipos.indexOf(it.tipo || 'sem') === -1) return false;
     if(p.statusF && p.statusF.length && p.statusF.indexOf(statusEfetivo(it)) === -1) return false;
     if(p.categorias && p.categorias.length && p.categorias.indexOf(it.categoriaId || 'sem') === -1) return false;
     if(p.projetosF && p.projetosF.length && p.projetosF.indexOf(it.projetoId || 'sem') === -1) return false;
@@ -4183,6 +4189,62 @@ function aplicaFiltros(arr, sec){
     }
     return true;
   });
+}
+/* --- Itens novos seguem os filtros da tela: categoria, data, status e projeto já vêm preenchidos --- */
+/** Filtro com um valor só vira o valor do item novo ('sem' vira vazio). undefined: não há um valor único. */
+const valorUnico = arr => arr && arr.length === 1 ? (arr[0] === 'sem' ? null : arr[0]) : undefined;
+/** Dia dentro do intervalo, o mais perto possível de hoje. */
+function dataNoIntervalo(ini, fim){
+  const h = hojeISO();
+  if(ini && ini > h) return ini;
+  if(fim && fim < h) return fim;
+  return h;
+}
+/** Status do filtro, se for um só e não for o de conclusão. */
+function statusDoFiltro(p, tipo){ const st = valorUnico(p.statusF), s = st ? statusPorId(tipo, st) : null; return s && !s.final ? s.id : undefined; }
+/** Seção (com filtros) da tela atual. */
+function secDaTela(){
+  const r = state.ui.rota;
+  if(r.view === 'projetos') return r.id ? 'projeto' : 'projetos';
+  return ['entrada','hoje','tarefas','categoria'].indexOf(r.view) !== -1 ? r.view : null;
+}
+/** O que um item criado nesta seção herda dos filtros ativos: {tipo, secao, categoriaId, dataEntrega/dataLembrete, status, projetoId}. */
+function padroesDoContexto(sec){
+  const r = state.ui.rota, p = state.prefs[sec] || {}, b = {};
+  const cat = sec === 'categoria' ? (r.id === 'sem' ? null : r.id) : valorUnico(p.categorias);
+  if(cat === null || (cat && getCat(cat))) b.categoriaId = cat;
+  if(sec === 'hoje'){
+    const iv = intervaloPeriodo();
+    // em "Vencidos" o item novo vence hoje (não nasce atrasado); nos outros períodos, o dia mais perto de hoje dentro dele
+    b[p.datas.length === 1 && p.datas[0] === 'lemb' ? 'dataLembrete' : 'dataEntrega'] = p.periodo === 'vencidos' ? hojeISO() : dataNoIntervalo(iv[0], iv[1]);
+    const soProj = p.tipos.length === 1 && p.tipos[0] === 'projeto';
+    Object.assign(b, soProj ? {tipo:'projeto', secao:'projetos'} : {tipo:'tarefa', secao:'tarefas'});
+  }else if(sec === 'tarefas'){
+    Object.assign(b, {tipo:'tarefa', secao:'tarefas', dataEntrega:dataNoIntervalo(p.dtIni, p.dtFim)});   // sem intervalo: hoje
+    const st = statusDoFiltro(p, 'tarefa'); if(st) b.status = st;
+    const pj = valorUnico(p.projetosF), proj = pj ? getItem(pj) : null;
+    if(proj && !concluido(proj)) b.projetoId = proj.id;
+  }else if(sec === 'projetos' || sec === 'categoria'){
+    Object.assign(b, {tipo:'projeto', secao:'projetos'});
+    const st = statusDoFiltro(p, 'projeto'); if(st) b.status = st;
+    if(p.dtIni || p.dtFim) b.dataEntrega = dataNoIntervalo(p.dtIni, p.dtFim);
+  }else if(sec === 'projeto'){
+    const proj = getItem(r.id);
+    Object.assign(b, {tipo:'tarefa', secao:'tarefas'});
+    if(proj && proj.tipo === 'projeto' && !concluido(proj)) Object.assign(b, {projetoId:proj.id, categoriaId:proj.categoriaId || null});
+  }else{
+    Object.assign(b, {tipo:null, secao:'entrada'});
+    if(sec === 'entrada' && (p.dtIni || p.dtFim)) b.dataEntrega = dataNoIntervalo(p.dtIni, p.dtFim);
+  }
+  return b;
+}
+/** Os padrões da tela para um tipo escolhido (null = Entrada, sem tipo). */
+function padroesPara(tipo, sec){
+  const b = padroesDoContexto(sec === undefined ? secDaTela() : sec);
+  b.tipo = tipo; b.secao = tipo === 'projeto' ? 'projetos' : tipo === 'tarefa' ? 'tarefas' : 'entrada';
+  if(tipo !== 'tarefa') delete b.projetoId;
+  if(!tipo || (b.status && !statusPorId(tipo, b.status))) delete b.status;
+  return b;
 }
 function sheetFiltros(sec){
   abrirSheet({titulo:'Filtros', autofoco:false, corpoFn:() => corpoFiltros(sec),
@@ -4226,10 +4288,10 @@ function rodapeTriagem(it){
 }
 function viewEntrada(){
   if(state.prefs.entrada.aba === 'futuro') return viewFuturo();
-  const lista = filtraBusca(items().filter(i => i.secao === 'entrada')).sort((a,b) => a.criadoEm < b.criadoEm ? 1 : -1);
+  const lista = filtraBusca(aplicaFiltros(items().filter(i => i.secao === 'entrada'), 'entrada')).sort((a,b) => a.criadoEm < b.criadoEm ? 1 : -1);
   const nf = contadores().futuro;
   if(!lista.length){
-    if(state.ui.busca.trim().length >= 2) return vazio('search', 'Nada na triagem com essa busca', '', btnLimparBusca());
+    if(contaFiltros('entrada') || state.ui.busca.trim().length >= 2) return vazio('filter', 'Nada na triagem com esses filtros', '', (contaFiltros('entrada') ? btnLimparFiltros('entrada') : '') + (state.ui.busca ? btnLimparBusca() : ''));
     return vazio('inbox', 'Entrada zerada 🎉', 'Capture uma ideia e faça a triagem depois, com calma.',
       '<button type="button" class="btn prim" data-act="captura">' + ic('plus',15) + 'Capturar item</button>' +
       (nf ? '<button type="button" class="btn" data-act="aba-entrada" data-v="futuro">' + ic('archive',15) + 'Ver Futuro (' + nf + ')</button>' : ''));
@@ -4908,16 +4970,62 @@ function aplicarRascunho(it, r, mudBase){
   });
   return mud;
 }
-function sheetCaptura(){
-  const r = novoRascunho(null, null);
-  abrirSheet({titulo:'Captura rápida', autofoco:'sempre', corpo:
-    '<div class="field"><label class="sr-only" for="capTitulo">Título</label><input class="inp" id="capTitulo" placeholder="O que você precisa lembrar?" autocomplete="off" enterkeyhint="done" autocapitalize="sentences"></div>' +
-    '<button type="button" class="btn sm ghost" id="capMaisBtn" aria-expanded="false" aria-controls="capMais">' + ic('chevR',14) + 'Mais detalhes</button>' +
-    '<div id="capMais" hidden style="margin-top:10px"><div id="rascCampos">' + camposRascHTML(r, null) + '</div>' +
-      '<p class="hint">' + ic('info',13) + '<span>Todos os campos são opcionais. O item entra na Entrada, sem tipo definido.</span></p></div>',
-    rodape:'<button type="button" class="btn blk" data-act="fechar-sheet">Cancelar</button><button type="button" class="btn prim blk" id="capSalvar">Salvar na Entrada</button>',
+/** Novo item: na Entrada (sem tipo), tarefa ou projeto. Começa pelo tipo da tela e já vem com o que os filtros dela indicam. */
+function sheetCaptura(tipoInicial){
+  const sec = secDaTela();
+  let tipo = tipoInicial !== undefined ? tipoInicial : padroesDoContexto(sec).tipo;
+  let r = null;
+  // (re)monta o rascunho no tipo escolhido: guarda o que já foi preenchido e completa com os padrões da tela
+  const montar = function(){
+    const pad = padroesPara(tipo, sec), ant = r;
+    r = novoRascunho(tipo, ant);
+    camposFormulario(tipo).forEach(function(c){ if(c.sistema && pad[c.id] !== undefined && (r[c.id] == null || r[c.id] === '') && !(ant && c.id in ant)) r[c.id] = pad[c.id]; });
+    if(tipo && pad.status) r.status = pad.status;
+  };
+  montar();
+  const NOMES = {'':'Entrada', tarefa:'Tarefa', projeto:'Projeto'};
+  const segHTML = () => '<div class="seg cap-tipo" role="radiogroup" aria-label="Criar como">' + ['', 'tarefa', 'projeto'].map(k =>
+    '<button type="button" role="radio" data-cap-tipo="' + k + '" class="' + ((tipo || '') === k ? 'on' : '') + '" aria-checked="' + ((tipo || '') === k) + '">' + ic(k === 'projeto' ? 'folder' : k === 'tarefa' ? 'checkSq' : 'inbox', 14) + NOMES[k] + '</button>').join('') + '</div>';
+  const herdadoHTML = function(){
+    const pad = padroesPara(tipo, sec), partes = [];
+    if('categoriaId' in pad && r.categoriaId === pad.categoriaId) partes.push(pad.categoriaId ? nomeCat(pad.categoriaId) : 'Sem categoria');
+    ['dataEntrega','dataLembrete'].forEach(k => { if(pad[k] && r[k] === pad[k]) partes.push(rotuloCurto(k) + ' ' + fmtRelativa(pad[k])); });
+    if(pad.projetoId && r.projetoId === pad.projetoId) partes.push(nomeProjeto(pad.projetoId));
+    if(pad.status && r.status === pad.status){ const st = statusPorId(tipo, pad.status); if(st) partes.push(st.nome); }
+    return partes.length ? '<p class="hint" style="margin:8px 0 0">' + ic('filter',13) + '<span>Pelos filtros da tela: ' + esc(partes.join(' · ')) + '. Ajuste em “Mais detalhes”.</span></p>' : '';
+  };
+  const dicaTipo = () => tipo ? 'Todos os campos são opcionais. ' + (tipo === 'projeto' ? 'O projeto vai para Projetos.' : 'A tarefa vai para Tarefas' + (r.projetoId ? ', dentro do projeto.' : '.'))
+    : 'Todos os campos são opcionais. O item entra na Entrada, sem tipo definido.';
+  const rotSalvar = () => tipo === 'projeto' ? 'Criar projeto' : tipo === 'tarefa' ? 'Criar tarefa' : 'Salvar na Entrada';
+  const placeholder = () => tipo === 'projeto' ? 'Nome do projeto' : tipo === 'tarefa' ? 'O que precisa ser feito?' : 'O que você precisa lembrar?';
+  abrirSheet({titulo: tipo === 'projeto' ? 'Novo projeto' : tipo === 'tarefa' ? 'Nova tarefa' : 'Captura rápida', autofoco:'sempre', corpo:
+    '<div id="capSeg" style="margin-bottom:10px">' + segHTML() + '</div>' +
+    '<div class="field"><label class="sr-only" for="capTitulo">Título</label><input class="inp" id="capTitulo" placeholder="' + placeholder() + '" autocomplete="off" enterkeyhint="done" autocapitalize="sentences"></div>' +
+    '<div id="capHerda">' + herdadoHTML() + '</div>' +
+    '<button type="button" class="btn sm ghost" id="capMaisBtn" aria-expanded="false" aria-controls="capMais" style="margin-top:6px">' + ic('chevR',14) + 'Mais detalhes</button>' +
+    '<div id="capMais" hidden style="margin-top:10px"><div id="rascCampos">' + camposRascHTML(r, tipo) + '</div>' +
+      '<p class="hint" id="capDica">' + ic('info',13) + '<span>' + esc(dicaTipo()) + '</span></p></div>',
+    rodape:'<button type="button" class="btn blk" data-act="fechar-sheet">Cancelar</button><button type="button" class="btn prim blk" id="capSalvar">' + rotSalvar() + '</button>',
     aoMontar:function(el){
-      ligarRascunho(el, r, null);
+      const redesenhar = function(){
+        $('#rascCampos', el).innerHTML = camposRascHTML(r, tipo);
+        $('#capHerda', el).innerHTML = herdadoHTML();
+        $('#capDica', el).innerHTML = ic('info',13) + '<span>' + esc(dicaTipo()) + '</span>';
+      };
+      // mesmos chips do rascunho da triagem (r e tipo mudam quando o tipo é trocado)
+      el.addEventListener('click', function(e){
+        const b = e.target.closest('[data-rc]'); if(b){ e.preventDefault(); editarRasc(b, r, b.dataset.rc, tipo, redesenhar); return; }
+        const t = e.target.closest('[data-cap-tipo]'); if(!t) return;
+        const novo = t.dataset.capTipo || null; if(novo === tipo) return;
+        tipo = novo; montar();
+        $('#capSeg', el).innerHTML = segHTML();
+        $('.sheet-h h2', el).textContent = tipo === 'projeto' ? 'Novo projeto' : tipo === 'tarefa' ? 'Nova tarefa' : 'Captura rápida';
+        $('#capTitulo', el).placeholder = placeholder();
+        $('#capSalvar', el).textContent = rotSalvar();
+        redesenhar();
+        const f = $('[data-cap-tipo="' + (tipo || '') + '"]', el); if(f) f.focus();
+      });
+      el.addEventListener('input', function(e){ const t = e.target.closest('[data-rt]'); if(t) r[t.dataset.rt] = t.value; });
       const mais = $('#capMaisBtn', el);
       mais.addEventListener('click', function(){
         const box = $('#capMais', el), abrir = box.hidden;
@@ -4927,11 +5035,15 @@ function sheetCaptura(){
       const salvar = function(){
         const t = $('#capTitulo', el);
         if(!t.value.trim()){ t.focus(); toast('Digite um título'); return; }
-        const base = {titulo:t.value.trim(), secao:'entrada', tipo:null, extras:Object.assign({}, r.extras), recorrencia:Object.assign({}, r.recorrencia)};
-        camposFormulario(null).forEach(c => { if(c.sistema) base[c.id] = c.tipo === 'textoLongo' ? String(r[c.id] || '').trim() : (r[c.id] || null); });
+        const base = Object.assign(padroesPara(tipo, sec), {titulo:t.value.trim(), extras:Object.assign({}, r.extras), recorrencia:Object.assign({}, r.recorrencia)});
+        camposFormulario(tipo).forEach(c => { if(c.sistema) base[c.id] = c.tipo === 'textoLongo' ? String(r[c.id] || '').trim() : (r[c.id] || null); });
+        if(tipo) base.status = r.status;
         fecharSheet(true);
-        const it = criarItem(base);
-        toast('“' + it.titulo + '” na Entrada', () => { removerItens([it.id]); persistir(); render(); });
+        const it = criarItem(base, {semRender:true});
+        fixarEmHoje(sec, it);
+        render();
+        const onde = !it.tipo ? 'na Entrada' : it.projetoId ? 'em “' + nomeProjeto(it.projetoId) + '”' : it.tipo === 'projeto' ? 'em Projetos' : 'em Tarefas';
+        toast('“' + it.titulo + '” criado ' + onde, () => { removerItens([it.id]); persistir(); render(); });
       };
       $('#capSalvar', el).addEventListener('click', salvar);
       $('#capTitulo', el).addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); salvar(); } });
@@ -5524,27 +5636,30 @@ function criarNaColuna(sec, col, titulo){
   if(sec === 'projeto'){ const p = getItem(state.ui.rota.id); if(!p || concluido(p)){ toast('Projeto concluído não aceita novas tarefas'); return; } }
   const novo = criarItem(base, {semRender:true});
   if(concluido(novo)) state.ui.recemConcluidos.add(novo.id);
-  if(sec === 'hoje') state.ui.fixadosHoje[novo.id] = 'dataEntrega';
+  fixarEmHoje(sec, novo);
   state.ui.addCol = {sec, col};            // mantém o rascunho aberto para criar o próximo
   render();
   toast('“' + novo.titulo + '” criado', () => { removerItens([novo.id]); persistir(); render(); });
 }
+/** Item criado em Hoje continua visível nesta visita, mesmo com a data fora do período. */
+function fixarEmHoje(sec, it){
+  if(sec !== 'hoje' || !it || !it.tipo) return;
+  const k = it.dataEntrega ? 'dataEntrega' : it.dataLembrete ? 'dataLembrete' : null;
+  if(k) state.ui.fixadosHoje[it.id] = k;
+}
 /** Adição rápida do modo Foco. */
 function criarNoFoco(sec, titulo){
   if(!titulo.trim()) return;
-  const r = state.ui.rota, base = {titulo:titulo.trim()};
-  if(sec === 'projetos') Object.assign(base, {tipo:'projeto', secao:'projetos'});
-  else if(sec === 'categoria') Object.assign(base, heranca('categoria', null));
-  else if(sec === 'projeto'){
-    const p = getItem(r.id);
-    if(!p || concluido(p)){ toast('Projeto concluído não aceita novas tarefas'); return; }
-    Object.assign(base, {tipo:'tarefa', secao:'tarefas', projetoId:p.id});
-  }else if(sec === 'hoje' || sec === 'tarefas') Object.assign(base, {tipo:'tarefa', secao:'tarefas', dataEntrega:hojeISO()});   // entrega padrão: hoje
-  else Object.assign(base, {tipo:'tarefa', secao:'tarefas'});
+  const r = state.ui.rota;
+  if(sec === 'projeto'){ const p = getItem(r.id); if(!p || concluido(p)){ toast('Projeto concluído não aceita novas tarefas'); return; } }
+  // o que os filtros da tela indicam (em Hoje e Tarefas, a entrega padrão é hoje)
+  const base = Object.assign(padroesDoContexto(sec), {titulo:titulo.trim()});
+  if(!base.tipo) Object.assign(base, {tipo:'tarefa', secao:'tarefas'});
   const novo = criarItem(base, {semRender:true});
+  fixarEmHoje(sec, novo);
   state.ui.focar = '#focoAdd';
   render();
-  toast('“' + novo.titulo + '” adicionado' + (base.dataEntrega ? ' para hoje' : ''), () => { removerItens([novo.id]); persistir(); render(); });
+  toast('“' + novo.titulo + '” adicionado' + (base.dataEntrega === hojeISO() ? ' para hoje' : ''), () => { removerItens([novo.id]); persistir(); render(); });
 }
 function criarSubtarefa(pid, titulo){
   const p = getItem(pid); if(!p || !titulo.trim()) return;
@@ -5769,8 +5884,9 @@ const ACOES = {
     setTimeout(() => { const i = $('#panel textarea[data-field="titulo"]'); if(i){ i.focus(); i.select(); } }, 280);
   },
   'sub-add': (d, el) => { const i = el.parentElement.querySelector('input'); if(i) criarSubtarefa(d.pid, i.value); },
-  'nova-tarefa': () => { const t = criarItem({tipo:'tarefa', secao:'tarefas', titulo:'Nova tarefa', dataEntrega:hojeISO()}); abrirItem(t.id); setTimeout(() => { const i = $('#panel textarea[data-field="titulo"]'); if(i){ i.focus(); i.select(); } }, 280); },
-  'novo-projeto': d => { const p = criarItem({tipo:'projeto', secao:'projetos', titulo:'Novo projeto', categoriaId: d && getCat(d.cat) ? d.cat : null}); irPara('#/projetos/' + p.id); },
+  'nova-tarefa': () => { const t = criarItem(Object.assign(padroesPara('tarefa'), {titulo:'Nova tarefa'})); abrirItem(t.id); setTimeout(() => { const i = $('#panel textarea[data-field="titulo"]'); if(i){ i.focus(); i.select(); } }, 280); },
+  'novo-projeto': d => { const p = criarItem(Object.assign(padroesPara('projeto'), {titulo:'Novo projeto'}, d && getCat(d.cat) ? {categoriaId:d.cat} : {})); irPara('#/projetos/' + p.id); },
+  'novo-ctx': () => sheetCaptura(),
   'tog-sel': () => state.ui.modoSel ? sairSelecao() : entrarSelecao(),
   'sel-sair': () => sairSelecao(),
   'sel-todos': () => selTodos(),
@@ -6783,7 +6899,7 @@ function boot(){
     }, 150);
   });
   $('#fab').innerHTML = ic('plus', 26);
-  $('#fab').addEventListener('click', sheetCaptura);
+  $('#fab').addEventListener('click', () => sheetCaptura());
   $('#scrim').addEventListener('click', function(){ if(sheetAtual) fecharSheet(); else if(state.ui.rota.item) fecharPainel(); });
   $('#scrimPop').addEventListener('click', () => fecharPop());
   $('#scrimMenu').addEventListener('click', () => fecharMenu());
