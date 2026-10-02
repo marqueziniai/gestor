@@ -306,6 +306,10 @@ button.prog-wrap[aria-expanded="true"] .chev{transform:rotate(180deg)}
 .card.rascunho .kcol-input{border:none;box-shadow:none;padding:4px 0;font-size:14.5px;font-weight:600;background:transparent}
 .rasc-dica{font-size:11.5px;color:var(--text-3);margin-top:4px}
 .add-row{padding:6px 0 4px}
+.aviso-vazio{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--text-2);margin:0 0 12px;padding:8px 12px;border:1px dashed var(--border);border-radius:var(--r-md)}
+.aviso-vazio>svg{flex:none;color:var(--text-3)}
+.aviso-vazio .acts{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.aviso-vazio .acts .btn{height:30px;font-size:12.5px;padding:0 10px}
 .add-grupo{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:var(--r-sm);color:var(--text-3);font-size:13px;font-weight:550;min-height:36px}
 @media (hover:hover){.add-grupo:hover{background:var(--surface-2);color:var(--text)}}
 
@@ -3542,7 +3546,7 @@ function focoHTML(sec, itens, o){
             : '<span>' + (ehToque() ? 'Segure e arraste' : 'Arraste') + (sec === 'projetos' || sec === 'categoria' ? ' um projeto' : ' uma tarefa') + ' para definir a sua ordem.</span>') + '</p>' : '';
   const corpo = blocos.map(g => grupo(sec, 'foco-' + g.chave, g.nome, lista(g.itens), g.itens.length)).join('') +
     (feitos.length ? grupo(sec, 'foco-feitas', 'Concluídas', '<div class="foco-lista" role="list">' + feitos.map(it => linhaFoco(it, {semProjeto:o.semProjeto})).join('') + '</div>', feitos.length) : '');
-  return '<div class="foco">' + add + (corpo ? ordemInfo + corpo : vazio('sparkle', 'Tudo em dia 🎉', o.vazio || 'Nenhuma tarefa aberta por aqui.')) + '</div>';
+  return '<div class="foco">' + add + (corpo ? ordemInfo + corpo : state.ui.avisoVazio ? '' : vazio('sparkle', 'Tudo em dia 🎉', o.vazio || 'Nenhuma tarefa aberta por aqui.')) + '</div>';
 }
 /** Larguras das colunas: [mínimo em px, trilha do grid]. Com quebra de linha, os mínimos encolhem para caber na tela. */
 function larguraCol(cid, quebra){
@@ -3571,6 +3575,7 @@ function heranca(sec, col){
   const b = padroesDoContexto(sec);
   if(sec === 'projetos'){ if(statusPorId('projeto', col)) b.status = col; else if(getCat(col)) b.categoriaId = col; else if(col === 'sem') b.categoriaId = null; }
   else if(sec === 'projeto' || sec === 'categoria'){ if(statusPorId(b.tipo, col)) b.status = col; }
+  else if(sec === 'entrada' && /^cat-/.test(col || '')){ const c = col.slice(4); b.categoriaId = getCat(c) ? c : null; }
   else if(sec === 'tarefas'){
     // em Tarefas, a entrega padrão é hoje (ou o dia do intervalo filtrado); no agrupamento por faixa, o primeiro dia da faixa; em "Sem data", nenhuma
     const ag = state.prefs.tarefas.agrupar === 'nenhum' ? 'status' : state.prefs.tarefas.agrupar;
@@ -3597,10 +3602,10 @@ function rascunhoHTML(sec, col, rotuloCol){
   const cat = b.categoriaId || (b.projetoId && getItem(b.projetoId) ? getItem(b.projetoId).categoriaId : null);
   if(cat && getCat(cat)) chips.push('<span class="fc"><span class="dot" style="background:' + esc(getCat(cat).cor) + '"></span><span class="v">' + esc(nomeCat(cat)) + '</span></span>');
   ['dataEntrega','dataLembrete'].forEach(k => { if(b[k]) chips.push('<span class="fc">' + ic(k === 'dataLembrete' ? 'bell' : 'calendar',12) + '<span class="rot">' + esc(rotuloCurto(k)) + '</span><span class="v">' + esc(fmtCurta(b[k])) + '</span></span>'); });
-  const tipo = b.tipo === 'projeto' ? 'Projeto' : 'Tarefa';
+  const tipo = (b.tipo === 'projeto' ? 'Projeto' : b.tipo === 'tarefa' ? 'Tarefa' : 'Item') + (b.secao === 'futuro' ? ' no Futuro' : b.secao === 'entrada' ? ' na Entrada' : '');
   return '<div class="card rascunho"><div class="c-meta"><span class="c-tipo"><span class="v">Novo · ' + tipo + '</span></span></div>' +
     '<label class="sr-only" for="addColInput">Título do novo item em ' + esc(rotuloCol) + '</label>' +
-    '<input class="kcol-input" id="addColInput" data-sec="' + sec + '" data-col="' + esc(col) + '" placeholder="Título ' + (b.tipo === 'projeto' ? 'do projeto' : 'da tarefa') + '" autocomplete="off" enterkeyhint="done" autocapitalize="sentences">' +
+    '<input class="kcol-input" id="addColInput" data-sec="' + sec + '" data-col="' + esc(col) + '" placeholder="Título ' + (b.tipo === 'projeto' ? 'do projeto' : b.tipo === 'tarefa' ? 'da tarefa' : 'do item') + '" autocomplete="off" enterkeyhint="done" autocapitalize="sentences">' +
     (chips.length ? '<div class="c-chips" style="margin-top:6px">' + chips.join('') + '</div>' : '') +
     '<p class="rasc-dica">Enter cria · Esc ou clicar fora sem texto cancela</p></div>';
 }
@@ -4237,13 +4242,17 @@ function padroesDoContexto(sec){
   }else{
     Object.assign(b, {tipo:null, secao:'entrada'});
     if(sec === 'entrada' && (p.dtIni || p.dtFim)) b.dataEntrega = dataNoIntervalo(p.dtIni, p.dtFim);
+    if(sec === 'entrada' && p.aba === 'futuro'){
+      b.secao = 'futuro';
+      const tp = valorUnico(p.tipos); if(tp === 'tarefa' || tp === 'projeto') b.tipo = tp;
+    }
   }
   return b;
 }
 /** Os padrões da tela para um tipo escolhido (null = Entrada, sem tipo). */
 function padroesPara(tipo, sec){
   const b = padroesDoContexto(sec === undefined ? secDaTela() : sec);
-  b.tipo = tipo; b.secao = tipo === 'projeto' ? 'projetos' : tipo === 'tarefa' ? 'tarefas' : 'entrada';
+  b.tipo = tipo; b.secao = b.secao === 'futuro' ? 'futuro' : tipo === 'projeto' ? 'projetos' : tipo === 'tarefa' ? 'tarefas' : 'entrada';
   if(tipo !== 'tarefa') delete b.projetoId;
   if(!tipo || (b.status && !statusPorId(tipo, b.status))) delete b.status;
   return b;
@@ -4271,7 +4280,17 @@ function vazio(icone, titulo, sub, acoes){
 }
 const btnLimparFiltros = sec => '<button type="button" class="btn" data-act="limpar-filtros" data-sec="' + sec + '">' + ic('refresh',15) + 'Limpar filtros</button>';
 const btnLimparBusca = () => '<button type="button" class="btn" data-act="limpar-busca">' + ic('x',15) + 'Limpar busca</button>';
+/** Tela sem itens: um aviso discreto no topo, e a visão (lista, grupos, colunas ou Foco) continua aparecendo para adicionar. */
+function avisarVazio(texto, botoes){
+  state.ui.avisoVazio = '<div class="aviso-vazio" role="status">' + ic('info',14) + '<span>' + esc(texto) + '</span>' + (botoes ? '<span class="acts">' + botoes + '</span>' : '') + '</div>';
+}
+const ADICIONE_ABAIXO = ' Adicione abaixo: o item novo já vem com os filtros.';
 function viewHTML(){
+  state.ui.avisoVazio = '';
+  const h = viewHTMLDaRota();
+  return state.ui.avisoVazio + h;
+}
+function viewHTMLDaRota(){
   const r = state.ui.rota;
   if(r.view === 'projetos' && r.id) return viewProjeto(r.id);
   if(r.view === 'categoria') return viewCategoria(r.id);
@@ -4291,22 +4310,23 @@ function rodapeTriagem(it){
 function viewEntrada(){
   if(state.prefs.entrada.aba === 'futuro') return viewFuturo();
   const lista = filtraBusca(aplicaFiltros(items().filter(i => i.secao === 'entrada'), 'entrada')).sort((a,b) => a.criadoEm < b.criadoEm ? 1 : -1);
-  const nf = contadores().futuro;
-  if(!lista.length){
-    if(contaFiltros('entrada') || state.ui.busca.trim().length >= 2) return vazio('filter', 'Nada na triagem com esses filtros', '', (contaFiltros('entrada') ? btnLimparFiltros('entrada') : '') + (state.ui.busca ? btnLimparBusca() : ''));
-    return vazio('inbox', 'Entrada zerada 🎉', 'Capture uma ideia e faça a triagem depois, com calma.',
-      '<button type="button" class="btn prim" data-act="captura">' + ic('plus',15) + 'Capturar item</button>' +
-      (nf ? '<button type="button" class="btn" data-act="aba-entrada" data-v="futuro">' + ic('archive',15) + 'Ver Futuro (' + nf + ')</button>' : ''));
-  }
+  const nf = contadores().futuro, nfil = contaFiltros('entrada'), filtrando = nfil || state.ui.busca.trim().length >= 2;
+  if(!lista.length) avisarVazio(filtrando ? 'Nada na triagem com esses filtros.' + ADICIONE_ABAIXO : 'Entrada zerada 🎉 Capture uma ideia e faça a triagem depois, com calma.',
+    (nfil ? btnLimparFiltros('entrada') : '') + (state.ui.busca ? btnLimparBusca() : '') +
+    (!filtrando && nf ? '<button type="button" class="btn" data-act="aba-entrada" data-v="futuro">' + ic('archive',15) + 'Ver Futuro (' + nf + ')</button>' : ''));
   const toque = ehToque();
   // no primeiro uso com toque, o primeiro card "espia" para os lados para mostrar o gesto
-  const espiar = toque && !state.prefs.dicas.swipe;
+  const espiar = toque && !state.prefs.dicas.swipe && lista.length;
   const cards = lista.map((it, i) =>
     '<div class="swipe-wrap"><div class="swipe-bg" aria-hidden="true"><span>' + ic('split',14) + 'Triagem</span><span>Futuro' + ic('archive',14) + '</span></div>' +
     '<div class="swipe-el' + (espiar && i === 0 ? ' espiar' : '') + '" data-swipe-id="' + it.id + '">' + cardHTML(it, {layout:'entrada', topo:'<div class="c-meta">' + ic('clock',12) + 'Capturado ' + esc(tempoRelativo(it.criadoEm)) + '</div>', rodape:rodapeTriagem}) + '</div></div>').join('');
   if(espiar){ state.prefs.dicas.swipe = true; persistirPrefs(); }
+  // "+ Adicionar" no fim da triagem: cria na Entrada com a categoria e a data dos filtros
+  const addAberto = state.ui.addCol && state.ui.addCol.sec === 'entrada' && state.ui.addCol.col === '__triagem';
+  const add = '<div class="lista-m"><div class="add-row">' + (addAberto ? rascunhoHTML('entrada', '__triagem', 'Triagem') : botaoAdicionar('entrada', '__triagem', 'add-grupo')) + '</div></div>';
+  if(!lista.length) return add;
   return '<p class="hint" style="margin:0 0 10px">' + ic('info',13) + '<span>' + (toque ? 'Deslize o card para a direita para fazer a triagem ou para a esquerda para classificar no Futuro — ou use os botões do card. Dá para desfazer.' : 'Transforme cada item em tarefa ou projeto, classifique no Futuro ou descarte (fica ' + DIAS_LIXEIRA + ' dias na lixeira).') + '</span></p>' +
-    '<div class="cards lista-m">' + cards + '</div>';
+    '<div class="cards lista-m">' + cards + '</div>' + add;
 }
 function acaoFuturo(it){
   return it.tipo
@@ -4317,12 +4337,13 @@ function viewFuturo(){
   const p = state.prefs.entrada;
   const lista = ordenar(filtraBusca(aplicaFiltros(items().filter(i => i.secao === 'futuro'), 'entrada')), p.ordem);
   if(!lista.length){
-    if(contaFiltros('entrada') || state.ui.busca.trim().length >= 2) return vazio('filter', 'Nada no Futuro com esses filtros', '', (contaFiltros('entrada') ? btnLimparFiltros('entrada') : '') + (state.ui.busca ? btnLimparBusca() : ''));
-    return vazio('archive', 'Nada no Futuro', 'Use “Classificar no Futuro” em qualquer item para tirá-lo do radar sem perdê-lo.',
-      '<button type="button" class="btn" data-act="aba-entrada" data-v="triagem">' + ic('inbox',15) + 'Voltar para a triagem</button>');
+    const filtrando = contaFiltros('entrada') || state.ui.busca.trim().length >= 2;
+    avisarVazio(filtrando ? 'Nada no Futuro com esses filtros.' + ADICIONE_ABAIXO : 'Nada no Futuro. Use “Classificar no Futuro” em qualquer item para tirá-lo do radar sem perdê-lo.',
+      (contaFiltros('entrada') ? btnLimparFiltros('entrada') : '') + (state.ui.busca ? btnLimparBusca() : ''));
   }
-  const ctx = {acaoLinha:acaoFuturo, rodape: it => acaoFuturo(it) + '<span class="sp"></span>' + btnMenu(it)};
-  const intro = '<p class="hint" style="margin:0 0 10px">' + ic('info',13) + '<span>Itens que você não vai ver agora. Ative quando chegar a hora.</span></p>';
+  // "+ Adicionar" cria direto no Futuro, com o que os filtros (e o grupo) indicam
+  const ctx = {acaoLinha:acaoFuturo, rodape: it => acaoFuturo(it) + '<span class="sp"></span>' + btnMenu(it), addFlat:true, podeAdicionar: () => true};
+  const intro = lista.length ? '<p class="hint" style="margin:0 0 10px">' + ic('info',13) + '<span>Itens que você não vai ver agora. Ative quando chegar a hora.</span></p>' : '';
   if(p.agrupar === 'categoria'){
     const grupos = categorias().map(c => ({chave:'cat-' + c.id, nome:c.nome, itens:lista.filter(i => i.categoriaId === c.id)}))
       .concat([{chave:'cat-sem', nome:'Sem categoria', itens:lista.filter(i => !i.categoriaId)}]);
@@ -4335,12 +4356,11 @@ function viewFuturo(){
 function viewHoje(){
   const p = state.prefs.hoje;
   const lista = ordenar(filtraBusca(itensHoje()), p.ordem, ctxOrdem('hoje', {motivo:motivoHoje}));
-  // kanban e lista agrupada aparecem vazios, com as colunas/grupos para adicionar
-  if(!lista.length && (p.visao === 'foco' || (p.visao === 'lista' && (p.agrupar || 'faixa') === 'nenhum'))){
-    if(state.ui.busca.trim().length >= 2) return vazio('search', 'Nada em Hoje com essa busca', '', btnLimparBusca());
+  // sem itens: aviso no topo, e a visão (colunas, grupos, lista ou Foco) continua aparecendo para adicionar
+  if(!lista.length){
     const semFiltroExtra = p.datas.length === 2 && p.tipos.length === 3 && !p.categorias.length;
-    return vazio('sparkle', semFiltroExtra ? 'Nada para hoje 🎉' : 'Nada com esses filtros', semFiltroExtra ? 'Nenhum item com data no período selecionado.' : 'Tente ampliar o período ou remover filtros.',
-      (p.periodo !== 'prox7' ? '<button type="button" class="btn prim" data-act="set-periodo" data-v="prox7">' + ic('calendar',15) + 'Ver os próximos 7 dias</button>' : '') + (contaFiltrosHoje() ? btnLimparFiltros('hoje') : ''));
+    avisarVazio(state.ui.busca.trim().length >= 2 ? 'Nada em Hoje com essa busca.' : semFiltroExtra ? 'Nada para hoje 🎉 Nenhum item com data no período selecionado.' : 'Nada com esses filtros.' + ADICIONE_ABAIXO,
+      (state.ui.busca ? btnLimparBusca() : '') + (p.periodo !== 'prox7' ? '<button type="button" class="btn" data-act="set-periodo" data-v="prox7">' + ic('calendar',15) + 'Ver os próximos 7 dias</button>' : '') + (contaFiltrosHoje() ? btnLimparFiltros('hoje') : ''));
   }
   if(p.visao === 'foco'){
     // no Foco, o que acabou de ser concluído desce para "Concluídas" em vez de sumir
@@ -4386,10 +4406,8 @@ function gruposHoje(lista, ag){
 function viewProjetos(){
   const p = state.prefs.projetos;
   const lista = ordenar(filtraConcluidos(filtraBusca(aplicaFiltros(items().filter(i => i.tipo === 'projeto' && i.secao === 'projetos'), 'projetos')), 'projetos'), p.ordem, ctxOrdem('projetos'));
-  if(!lista.length && (p.visao === 'foco' || (p.visao !== 'kanban' && p.agrupar === 'nenhum'))){
-    if(contaFiltros('projetos') || state.ui.busca.trim().length >= 2) return vazio('filter', 'Nenhum projeto com esses filtros', '', (contaFiltros('projetos') ? btnLimparFiltros('projetos') : '') + (state.ui.busca ? btnLimparBusca() : ''));
-    return vazio('folder', 'Nenhum projeto por aqui', 'Projetos reúnem tarefas com um objetivo comum.', '<button type="button" class="btn prim" data-act="novo-projeto">' + ic('plus',15) + 'Criar projeto</button>');
-  }
+  if(!lista.length) avisarVazio(contaFiltros('projetos') || state.ui.busca.trim().length >= 2 ? 'Nenhum projeto com esses filtros.' + ADICIONE_ABAIXO : 'Nenhum projeto por aqui. Projetos reúnem tarefas com um objetivo comum.',
+    (contaFiltros('projetos') ? btnLimparFiltros('projetos') : '') + (state.ui.busca ? btnLimparBusca() : ''));
   if(p.visao === 'foco') return focoHTML('projetos', lista, {placeholder:'Adicionar projeto', vazio:'Nenhum projeto aberto.'});
   // agrupar: status (colunas de status de PROJETO) ou categoria; "sem agrupamento" só na lista
   const ag = p.agrupar === 'categoria' ? 'categoria' : p.agrupar === 'nenhum' && p.visao !== 'kanban' ? 'nenhum' : 'status';
@@ -4415,10 +4433,9 @@ function viewCategoria(cid){
   const soltas = ordenar(filtraConcluidos(filtraBusca(filtraIntervalo(items().filter(i => i.tipo === 'tarefa' && i.secao === 'tarefas' && !i.projetoId && !ehLembrete(i) && (i.categoriaId || 'sem') === cid), p)), 'categoria'), p.ordem, ctxOrdem('categoria'));
   const filtrando = contaFiltros('categoria') || state.ui.busca.trim().length >= 2;
   let corpo;
+  if(!lista.length) avisarVazio(filtrando ? 'Nenhum projeto com esses filtros.' + ADICIONE_ABAIXO : 'Nenhum projeto nesta categoria. Categorias agrupam projetos; os projetos agrupam tarefas.',
+    (contaFiltros('categoria') ? btnLimparFiltros('categoria') : '') + (state.ui.busca ? btnLimparBusca() : ''));
   if(p.visao === 'foco') corpo = focoHTML('categoria', lista, {placeholder:'Adicionar projeto', vazio:'Nenhum projeto aberto nesta categoria.'});
-  else if(!lista.length && p.visao !== 'kanban') corpo = filtrando
-    ? vazio('filter', 'Nenhum projeto com esses filtros', '', (contaFiltros('categoria') ? btnLimparFiltros('categoria') : '') + (state.ui.busca ? btnLimparBusca() : ''))
-    : vazio('folder', 'Nenhum projeto nesta categoria', 'Categorias agrupam projetos; os projetos agrupam tarefas.', '<button type="button" class="btn prim" data-act="novo-projeto" data-cat="' + esc(cid) + '">' + ic('plus',15) + 'Criar projeto</button>');
   else if(p.visao === 'kanban') corpo = kanbanHTML('categoria', soColunasFiltradas('categoria', listaStatus('projeto').map(s => ({chave:s.id, nome:s.nome, cor:s.cor, itens:lista.filter(i => i.status === s.id)})), 'status'), {dropKind:'status-projeto', statusTipo:'projeto'});
   else corpo = listaHTML('categoria', {itens:lista}, {addFlat:true});
   // tarefas sem projeto: seção própria, na mesma visão e com os mesmos filtros de data
@@ -4499,11 +4516,9 @@ function viewTarefas(){
   if(p.vinculo === 'sem') base = base.filter(i => !i.projetoId);
   const lista = ordenar(filtraConcluidos(filtraBusca(aplicaFiltros(base, 'tarefas')), 'tarefas'), p.ordem, ctxOrdem('tarefas'));
   const ag = p.agrupar === 'nenhum' && p.visao === 'kanban' ? 'status' : p.agrupar;
+  if(!lista.length) avisarVazio(contaFiltros('tarefas') || state.ui.busca.trim().length >= 2 ? 'Nenhuma tarefa com esses filtros.' + ADICIONE_ABAIXO : 'Nenhuma tarefa aberta. Crie uma ou faça a triagem da Entrada.',
+    (contaFiltros('tarefas') ? btnLimparFiltros('tarefas') : '') + (state.ui.busca ? btnLimparBusca() : ''));
   if(p.visao === 'foco') return focoHTML('tarefas', lista, {placeholder:'Adicionar tarefa'});
-  if(!lista.length && p.visao !== 'kanban' && p.agrupar === 'nenhum'){
-    if(contaFiltros('tarefas') || state.ui.busca.trim().length >= 2) return vazio('filter', 'Nenhuma tarefa com esses filtros', '', (contaFiltros('tarefas') ? btnLimparFiltros('tarefas') : '') + (state.ui.busca ? btnLimparBusca() : ''));
-    return vazio('checkSq', 'Nenhuma tarefa aberta', 'Crie uma tarefa ou faça a triagem da Entrada.', '<button type="button" class="btn prim" data-act="nova-tarefa">' + ic('plus',15) + 'Criar tarefa</button>');
-  }
   const projsCols = () => {
     const ids = {}; lista.forEach(i => { if(i.projetoId) ids[i.projetoId] = true; });
     return projetos().filter(x => x.secao !== 'entrada' && (!concluido(x) || ids[x.id]));
@@ -5007,9 +5022,10 @@ function sheetCaptura(tipoInicial){
     if(pad.status && r.status === pad.status){ const st = statusPorId(tipo, pad.status); if(st) partes.push(st.nome); }
     return partes.length ? '<p class="hint" style="margin:8px 0 0">' + ic('filter',13) + '<span>Pelos filtros da tela: ' + esc(partes.join(' · ')) + '. Ajuste em “Mais detalhes”.</span></p>' : '';
   };
-  const dicaTipo = () => tipo ? 'Todos os campos são opcionais. ' + (tipo === 'projeto' ? 'O projeto vai para Projetos.' : 'A tarefa vai para Tarefas' + (r.projetoId ? ', dentro do projeto.' : '.'))
+  const dicaTipo = () => noFuturo() ? 'Todos os campos são opcionais. O item vai para o Futuro (aba da Entrada).' : tipo ? 'Todos os campos são opcionais. ' + (tipo === 'projeto' ? 'O projeto vai para Projetos.' : 'A tarefa vai para Tarefas' + (r.projetoId ? ', dentro do projeto.' : '.'))
     : 'Todos os campos são opcionais. O item entra na Entrada, sem tipo definido.';
-  const rotSalvar = () => tipo === 'projeto' ? 'Criar projeto' : tipo === 'tarefa' ? 'Criar tarefa' : 'Salvar na Entrada';
+  const noFuturo = () => padroesPara(tipo, sec).secao === 'futuro';
+  const rotSalvar = () => noFuturo() ? 'Salvar no Futuro' : tipo === 'projeto' ? 'Criar projeto' : tipo === 'tarefa' ? 'Criar tarefa' : 'Salvar na Entrada';
   const placeholder = () => tipo === 'projeto' ? 'Nome do projeto' : tipo === 'tarefa' ? 'O que precisa ser feito?' : 'O que você precisa lembrar?';
   abrirSheet({titulo: tipo === 'projeto' ? 'Novo projeto' : tipo === 'tarefa' ? 'Nova tarefa' : 'Captura rápida', autofoco:'sempre', corpo:
     '<div id="capSeg" style="margin-bottom:10px">' + segHTML() + '</div>' +
@@ -5055,7 +5071,7 @@ function sheetCaptura(tipoInicial){
         const it = criarItem(base, {semRender:true});
         fixarEmHoje(sec, it);
         render();
-        const onde = !it.tipo ? 'na Entrada' : it.projetoId ? 'em “' + nomeProjeto(it.projetoId) + '”' : it.tipo === 'projeto' ? 'em Projetos' : 'em Tarefas';
+        const onde = it.secao === 'futuro' ? 'no Futuro' : !it.tipo ? 'na Entrada' : it.projetoId ? 'em “' + nomeProjeto(it.projetoId) + '”' : it.tipo === 'projeto' ? 'em Projetos' : 'em Tarefas';
         toast('“' + it.titulo + '” criado ' + onde, () => { removerItens([it.id]); persistir(); render(); });
       };
       $('#capSalvar', el).addEventListener('click', salvar);
