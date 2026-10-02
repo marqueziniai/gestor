@@ -4551,7 +4551,17 @@ function itensConcluidos(q){
     return true;
   });
 }
-function contaConcluidos(sec){ return itensConcluidos(escopoConcluidos(sec)).length; }
+/** Concluídos que "Ver concluídos" mostraria aqui: os do escopo da seção que passam pelos filtros dela (categoria, status, projeto, datas). */
+function contaConcluidos(sec){
+  let arr = itensConcluidos(escopoConcluidos(sec));
+  if(sec === 'projetos' || sec === 'tarefas' || sec === 'categoria') arr = aplicaFiltros(arr, sec);
+  if(sec === 'tarefas'){
+    const v = state.prefs.tarefas.vinculo;
+    if(v === 'com') arr = arr.filter(i => !!i.projetoId);
+    if(v === 'sem') arr = arr.filter(i => !i.projetoId);
+  }
+  return arr.length;
+}
 /** Resultados (separados do campo de busca, que não é redesenhado a cada letra). */
 function concluidosResHTML(){
   const q = normaliza(state.ui.buscaConcl.trim());
