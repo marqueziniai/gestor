@@ -3616,7 +3616,9 @@ const SECOES_ARRASTAVEIS = ['hoje','projetos','tarefas','projeto','categoria'];
 function listaHTML(sec, conteudo, ctx){
   ctx = ctx || {};
   const quebra = state.prefs.listaQuebra;
-  const grupos = conteudo.grupos ? conteudo.grupos.filter(g => g.itens.length || g.sempre || (ctx.podeAdicionar && state.ui.addCol && state.ui.addCol.sec === sec && state.ui.addCol.col === g.chave)) : null;
+  // com tudo vazio, os grupos aparecem mesmo assim (como as colunas do kanban), cada um com "+ Adicionar"
+  const tudoVazio = conteudo.grupos && conteudo.grupos.every(g => !g.itens.length);
+  const grupos = conteudo.grupos ? conteudo.grupos.filter(g => tudoVazio || g.itens.length || g.sempre || (ctx.podeAdicionar && state.ui.addCol && state.ui.addCol.sec === sec && state.ui.addCol.col === g.chave)) : null;
   const addAberto = col => state.ui.addCol && state.ui.addCol.sec === sec && state.ui.addCol.col === col;
   const rodapeAdd = (col, nome) => addAberto(col) ? '<div class="add-row">' + rascunhoHTML(sec, col, nome) + '</div>'
     : (ctx.podeAdicionar && ctx.podeAdicionar(col)) || (col === '__todos' && ctx.addFlat) ? '<div class="add-row">' + botaoAdicionar(sec, col, 'add-grupo') + '</div>' : '';
@@ -4333,7 +4335,8 @@ function viewFuturo(){
 function viewHoje(){
   const p = state.prefs.hoje;
   const lista = ordenar(filtraBusca(itensHoje()), p.ordem, ctxOrdem('hoje', {motivo:motivoHoje}));
-  if(!lista.length && p.visao !== 'kanban'){   // o kanban aparece vazio, com as colunas para adicionar
+  // kanban e lista agrupada aparecem vazios, com as colunas/grupos para adicionar
+  if(!lista.length && (p.visao === 'foco' || (p.visao === 'lista' && (p.agrupar || 'faixa') === 'nenhum'))){
     if(state.ui.busca.trim().length >= 2) return vazio('search', 'Nada em Hoje com essa busca', '', btnLimparBusca());
     const semFiltroExtra = p.datas.length === 2 && p.tipos.length === 3 && !p.categorias.length;
     return vazio('sparkle', semFiltroExtra ? 'Nada para hoje 🎉' : 'Nada com esses filtros', semFiltroExtra ? 'Nenhum item com data no período selecionado.' : 'Tente ampliar o período ou remover filtros.',
@@ -4383,7 +4386,7 @@ function gruposHoje(lista, ag){
 function viewProjetos(){
   const p = state.prefs.projetos;
   const lista = ordenar(filtraConcluidos(filtraBusca(aplicaFiltros(items().filter(i => i.tipo === 'projeto' && i.secao === 'projetos'), 'projetos')), 'projetos'), p.ordem, ctxOrdem('projetos'));
-  if(!lista.length && p.visao !== 'kanban'){
+  if(!lista.length && (p.visao === 'foco' || (p.visao !== 'kanban' && p.agrupar === 'nenhum'))){
     if(contaFiltros('projetos') || state.ui.busca.trim().length >= 2) return vazio('filter', 'Nenhum projeto com esses filtros', '', (contaFiltros('projetos') ? btnLimparFiltros('projetos') : '') + (state.ui.busca ? btnLimparBusca() : ''));
     return vazio('folder', 'Nenhum projeto por aqui', 'Projetos reúnem tarefas com um objetivo comum.', '<button type="button" class="btn prim" data-act="novo-projeto">' + ic('plus',15) + 'Criar projeto</button>');
   }
@@ -4497,7 +4500,7 @@ function viewTarefas(){
   const lista = ordenar(filtraConcluidos(filtraBusca(aplicaFiltros(base, 'tarefas')), 'tarefas'), p.ordem, ctxOrdem('tarefas'));
   const ag = p.agrupar === 'nenhum' && p.visao === 'kanban' ? 'status' : p.agrupar;
   if(p.visao === 'foco') return focoHTML('tarefas', lista, {placeholder:'Adicionar tarefa'});
-  if(!lista.length && p.visao !== 'kanban'){
+  if(!lista.length && p.visao !== 'kanban' && p.agrupar === 'nenhum'){
     if(contaFiltros('tarefas') || state.ui.busca.trim().length >= 2) return vazio('filter', 'Nenhuma tarefa com esses filtros', '', (contaFiltros('tarefas') ? btnLimparFiltros('tarefas') : '') + (state.ui.busca ? btnLimparBusca() : ''));
     return vazio('checkSq', 'Nenhuma tarefa aberta', 'Crie uma tarefa ou faça a triagem da Entrada.', '<button type="button" class="btn prim" data-act="nova-tarefa">' + ic('plus',15) + 'Criar tarefa</button>');
   }
