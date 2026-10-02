@@ -4333,7 +4333,7 @@ function viewFuturo(){
 function viewHoje(){
   const p = state.prefs.hoje;
   const lista = ordenar(filtraBusca(itensHoje()), p.ordem, ctxOrdem('hoje', {motivo:motivoHoje}));
-  if(!lista.length){
+  if(!lista.length && p.visao !== 'kanban'){   // o kanban aparece vazio, com as colunas para adicionar
     if(state.ui.busca.trim().length >= 2) return vazio('search', 'Nada em Hoje com essa busca', '', btnLimparBusca());
     const semFiltroExtra = p.datas.length === 2 && p.tipos.length === 3 && !p.categorias.length;
     return vazio('sparkle', semFiltroExtra ? 'Nada para hoje 🎉' : 'Nada com esses filtros', semFiltroExtra ? 'Nenhum item com data no período selecionado.' : 'Tente ampliar o período ou remover filtros.',
@@ -4383,7 +4383,7 @@ function gruposHoje(lista, ag){
 function viewProjetos(){
   const p = state.prefs.projetos;
   const lista = ordenar(filtraConcluidos(filtraBusca(aplicaFiltros(items().filter(i => i.tipo === 'projeto' && i.secao === 'projetos'), 'projetos')), 'projetos'), p.ordem, ctxOrdem('projetos'));
-  if(!lista.length){
+  if(!lista.length && p.visao !== 'kanban'){
     if(contaFiltros('projetos') || state.ui.busca.trim().length >= 2) return vazio('filter', 'Nenhum projeto com esses filtros', '', (contaFiltros('projetos') ? btnLimparFiltros('projetos') : '') + (state.ui.busca ? btnLimparBusca() : ''));
     return vazio('folder', 'Nenhum projeto por aqui', 'Projetos reúnem tarefas com um objetivo comum.', '<button type="button" class="btn prim" data-act="novo-projeto">' + ic('plus',15) + 'Criar projeto</button>');
   }
@@ -4413,7 +4413,7 @@ function viewCategoria(cid){
   const filtrando = contaFiltros('categoria') || state.ui.busca.trim().length >= 2;
   let corpo;
   if(p.visao === 'foco') corpo = focoHTML('categoria', lista, {placeholder:'Adicionar projeto', vazio:'Nenhum projeto aberto nesta categoria.'});
-  else if(!lista.length) corpo = filtrando
+  else if(!lista.length && p.visao !== 'kanban') corpo = filtrando
     ? vazio('filter', 'Nenhum projeto com esses filtros', '', (contaFiltros('categoria') ? btnLimparFiltros('categoria') : '') + (state.ui.busca ? btnLimparBusca() : ''))
     : vazio('folder', 'Nenhum projeto nesta categoria', 'Categorias agrupam projetos; os projetos agrupam tarefas.', '<button type="button" class="btn prim" data-act="novo-projeto" data-cat="' + esc(cid) + '">' + ic('plus',15) + 'Criar projeto</button>');
   else if(p.visao === 'kanban') corpo = kanbanHTML('categoria', soColunasFiltradas('categoria', listaStatus('projeto').map(s => ({chave:s.id, nome:s.nome, cor:s.cor, itens:lista.filter(i => i.status === s.id)})), 'status'), {dropKind:'status-projeto', statusTipo:'projeto'});
@@ -4461,7 +4461,7 @@ function viewProjeto(id){
   let corpo;
   if(pp.visao === 'foco'){
     corpo = focoHTML('projeto', subs, {semProjeto:true, placeholder:'Adicionar tarefa ao projeto', semAdicionar:fechado, vazio:'Nenhuma tarefa aberta neste projeto.'});
-  }else if(!subs.length && !noFuturo.length){
+  }else if(!subs.length && !noFuturo.length && pp.visao !== 'kanban'){
     corpo = vazio('checkSq', state.ui.busca ? 'Nenhuma tarefa com essa busca' : 'Sem tarefas ainda', fechado ? '' : 'Quebre o projeto em passos pequenos.', fechado ? '' : '<button type="button" class="btn prim" data-act="add-sub" data-id="' + id + '">' + ic('plus',15) + 'Adicionar tarefa</button>');
   }else if(pp.visao === 'kanban'){
     // subtarefas: sempre as colunas de status de TAREFA (lembretes numa coluna própria)
@@ -4497,7 +4497,7 @@ function viewTarefas(){
   const lista = ordenar(filtraConcluidos(filtraBusca(aplicaFiltros(base, 'tarefas')), 'tarefas'), p.ordem, ctxOrdem('tarefas'));
   const ag = p.agrupar === 'nenhum' && p.visao === 'kanban' ? 'status' : p.agrupar;
   if(p.visao === 'foco') return focoHTML('tarefas', lista, {placeholder:'Adicionar tarefa'});
-  if(!lista.length){
+  if(!lista.length && p.visao !== 'kanban'){
     if(contaFiltros('tarefas') || state.ui.busca.trim().length >= 2) return vazio('filter', 'Nenhuma tarefa com esses filtros', '', (contaFiltros('tarefas') ? btnLimparFiltros('tarefas') : '') + (state.ui.busca ? btnLimparBusca() : ''));
     return vazio('checkSq', 'Nenhuma tarefa aberta', 'Crie uma tarefa ou faça a triagem da Entrada.', '<button type="button" class="btn prim" data-act="nova-tarefa">' + ic('plus',15) + 'Criar tarefa</button>');
   }
