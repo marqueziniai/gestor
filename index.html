@@ -254,9 +254,14 @@ svg{display:block;flex:none}
 .c-ult{font-size:12.5px;color:var(--text-2);margin-top:6px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;border-left:2px solid var(--border-2);padding-left:8px}
 .c-ult .tm{color:var(--text-3);font-size:11.5px}
 /* texto cortado: degradê no fim e um "mais" discreto (marcado via JS só quando há conteúdo escondido) */
-.c-desc.trunc,.c-ult.trunc{position:relative}
-.c-desc.trunc::after,.c-ult.trunc::after{content:'mais';position:absolute;right:0;bottom:0;padding-left:28px;font-size:11.5px;font-weight:650;color:var(--accent);background:linear-gradient(90deg,transparent,var(--surface) 26px)}
-.lrow .c-desc.trunc::after,.lrow .c-ult.trunc::after{background:linear-gradient(90deg,transparent,var(--surface) 26px)}
+.c-desc.trunc,.c-ult.trunc,.c-desc.exp,.c-ult.exp{position:relative}
+.mais-t{position:absolute;right:0;bottom:0;padding-left:28px;font-size:11.5px;font-weight:650;color:var(--accent);background:linear-gradient(90deg,transparent,var(--surface) 26px);cursor:pointer;line-height:inherit}
+.mais-t.menos{position:static;display:inline;padding:0 0 0 6px;background:none}
+@media (hover:hover){.mais-t:hover{text-decoration:underline}}
+.c-desc.exp,.c-ult.exp{-webkit-line-clamp:unset !important;display:block !important;overflow:visible !important}
+button.c-ult{width:100%;text-align:left;font:inherit;font-size:12.5px;color:var(--text-2);border-radius:0 6px 6px 0}
+@media (hover:hover){button.c-ult:hover{background:var(--surface-2)}}
+.c-desc.c-vazio,button.c-ult.c-vazio{color:var(--text-3);border:1px dashed var(--border-2);border-radius:6px;padding:4px 8px;-webkit-line-clamp:1}
 /* próxima ação (GTD) */
 .c-prox{display:inline-flex;align-items:center;gap:3px;font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ok);background:var(--ok-soft);border:1px solid var(--ok-bd);border-radius:99px;padding:0 7px;height:20px;white-space:nowrap;flex:none}
 .c-alerta{display:flex;align-items:center;gap:6px;width:100%;text-align:left;font-size:12px;font-weight:650;color:var(--warn);background:var(--warn-soft);border:1px solid var(--warn-bd);border-radius:var(--r-sm);padding:5px 8px;margin-top:8px;min-height:32px}
@@ -1328,7 +1333,7 @@ const state = {
   ui:{
     rota:{view:'hoje', id:null, item:null, q:{}},
     busca:'', buscaConcl:'', feedFiltro:'tudo', addCol:null, editandoCmt:null, rascunhos:{},
-    recemConcluidos:new Set(), recemCriados:[], calDia:null, maisFerr:false, modoSel:false, sel:new Set(), estruturaAba:'status', maisCampos:false, focar:null,
+    recemConcluidos:new Set(), recemCriados:[], expTxt:new Set(), calDia:null, maisFerr:false, modoSel:false, sel:new Set(), estruturaAba:'status', maisCampos:false, focar:null,
     fixadosHoje:{},          // itens arrastados em Hoje nesta visita: id → campo de data alterado
     expandidos:new Set(),    // projetos com as tarefas abertas abaixo do card/linha
     animarChk:null           // id do item recém-concluído (anima o círculo depois do render)
@@ -3238,8 +3243,14 @@ function pecaCampo(it, cid, modo){
       const rotulo = ehLembrete(it) && cid === 'descricao' ? nomeCampo('textoLembrete') : nome;
       const dica = cid === 'textoLembrete' || ehLembrete(it) ? 'Do que você quer se lembrar' : 'Descrição do que precisa fazer';
       if(modo === 'card') return {k:'bloco', h:'<textarea class="inp" data-field="' + cid + '" data-id="' + it.id + '" rows="3" placeholder="' + dica + '" aria-label="' + esc(rotulo) + '" autocapitalize="sentences">' + esc(valor) + '</textarea>'};
-      if(!valor) return modo === 'lista' ? {k:'chip', h:chipVazio(it, cid, modo)} : null;
-      return {k:'bloco', h:'<button type="button" class="c-desc"' + attrEdit(it, cid) + ' aria-label="' + esc(rotulo) + ': ' + esc(valor.slice(0,80)) + '. Editar">' +
+      if(!valor){
+        if(modo === 'lista') return {k:'chip', h:chipVazio(it, cid, modo)};
+        // "Mostrar campos vazios": o campo aparece com o texto-guia e abre o editor ao clicar
+        return modo === 'kanban' && state.prefs.mostrarVazios
+          ? {k:'bloco', h:'<button type="button" class="c-desc c-vazio"' + attrEdit(it, cid) + ' aria-label="' + esc(rotulo) + ': vazio. Escrever">' + (cid === 'textoLembrete' || ehLembrete(it) ? 'Texto para lembrete' : 'Descrição') + '</button>'}
+          : null;
+      }
+      return {k:'bloco', h:'<button type="button" class="c-desc' + (state.ui.expTxt.has(it.id + '|' + cid) ? ' exp' : '') + '" data-exp="' + it.id + '|' + cid + '"' + attrEdit(it, cid) + ' aria-label="' + esc(rotulo) + ': ' + esc(valor.slice(0,80)) + '. Editar">' +
         (cid === 'textoLembrete' ? '<span class="c-tipo lemb" style="display:inline-flex;margin-right:4px;vertical-align:-1px">' + ic('bell',11) + '</span>' : '') + destaque(valor) + '</button>'};
     }
     case 'status': {
@@ -3271,18 +3282,24 @@ function pecaCampo(it, cid, modo){
       const u = ultimaAtualizacao(it);
       if(!u) return modo === 'kanban' ? null : {k:'bloco', h:'<span class="muted">—</span>'};
       const deOutra = u.de.id !== it.id;
-      return {k:'bloco', h:'<p class="c-ult" title="' + esc(tempoCompleto(u.a.em)) + '">' + ic(u.a.kind === 'comentario' ? 'msg' : 'history', 11).replace('<svg ','<svg style="display:inline;vertical-align:-1px;margin-right:3px" ') +
-        (deOutra ? '<b>' + esc(u.de.titulo) + ':</b> ' : '') + esc(resumoAtividade(u.a)) + ' <span class="tm">· ' + esc(tempoRelativo(u.a.em)) + '</span></p>'};
+      const edit = u.a.kind === 'comentario' && !deOutra;   // o último registro é um comentário deste item: dá para editá-lo
+      return {k:'bloco', h:'<' + (edit ? 'button type="button"' + attrEdit(it, 'ultimoComentario') : 'p') + ' class="c-ult' + (state.ui.expTxt.has(it.id + '|ua') ? ' exp' : '') + '" data-exp="' + it.id + '|ua" title="' + esc(tempoCompleto(u.a.em)) + '">' + ic(u.a.kind === 'comentario' ? 'msg' : 'history', 11).replace('<svg ','<svg style="display:inline;vertical-align:-1px;margin-right:3px" ') +
+        (deOutra ? '<b>' + esc(u.de.titulo) + ':</b> ' : '') + esc(resumoAtividade(u.a)) + ' <span class="tm">· ' + esc(tempoRelativo(u.a.em)) + '</span></' + (edit ? 'button' : 'p') + '>'};
     }
     case 'comentarios': {
       const n = contaComentarios(it);
-      if(!n && modo === 'kanban') return null;
-      return {k:'chip', h:'<span class="fc estatico" aria-label="' + n + ' comentário(s)">' + ic('msg', 12) + n + '</span>'};
+      if(!n && modo === 'kanban' && !state.prefs.mostrarVazios) return null;
+      // clicar escreve um comentário novo
+      return {k:'chip', h:'<button type="button" class="fc' + (n ? '' : ' vazio') + '"' + attrEdit(it, cid) + ' aria-label="' + n + ' comentário(s). Escrever um comentário">' + ic('msg', 12) + (n || '+ Comentário') + '</button>'};
     }
     case 'ultimoComentario': {
       const c = ultimoComentario(it);
-      if(!c) return modo === 'kanban' ? null : {k:'bloco', h:'<span class="muted">—</span>'};
-      return {k:'bloco', h:'<p class="c-ult">“' + esc(c.texto) + '” <span class="tm" title="' + esc(tempoCompleto(c.em)) + '">· ' + esc(tempoRelativo(c.em)) + '</span></p>'};
+      if(!c){
+        if(modo !== 'kanban') return {k:'bloco', h:chipVazio(it, cid, modo)};
+        return state.prefs.mostrarVazios ? {k:'bloco', h:'<button type="button" class="c-ult c-vazio"' + attrEdit(it, cid) + ' aria-label="Último comentário: vazio. Escrever">Adicionar comentário</button>'} : null;
+      }
+      // clicar edita o comentário; "mais" estende o texto
+      return {k:'bloco', h:'<button type="button" class="c-ult' + (state.ui.expTxt.has(it.id + '|uc') ? ' exp' : '') + '" data-exp="' + it.id + '|uc"' + attrEdit(it, cid) + ' aria-label="Último comentário: ' + esc(c.texto.slice(0,80)) + '. Editar">“' + esc(c.texto) + '” <span class="tm" title="' + esc(tempoCompleto(c.em)) + '">· ' + esc(tempoRelativo(c.em)) + '</span></button>'};
     }
   }
   // campos personalizados
@@ -3316,6 +3333,15 @@ function abrirEditorCampo(anchor, id, cid){
       if(ehLembrete(it)) return popTexto(anchor, {titulo:nomeCampo('textoLembrete'), valor:it.descricao, multi:true, sel, salvar:v => definirTextoLembrete(id, v)});
       return popTexto(anchor, {titulo:nome, valor:it.descricao, multi:true, sel, salvar:v => alterar(id, {descricao:v})});
     case 'textoLembrete': return popTexto(anchor, {titulo:nome, valor:it.textoLembrete || '', multi:true, sel, salvar:v => definirTextoLembrete(id, v)});
+    case 'ultimoComentario': {
+      const c = ultimoComentario(it);
+      return popTexto(anchor, {titulo: c ? 'Editar último comentário' : 'Novo comentário', valor: c ? c.texto : '', multi:true, sel,
+        salvar:v => c ? editarComentario(id, c.id, v) : comentar(id, v)});
+    }
+    case 'comentarios': {
+      const n = contaComentarios(it);
+      return popTexto(anchor, {titulo:'Novo comentário' + (n ? ' (já há ' + n + ')' : ''), valor:'', multi:true, sel, salvar:v => comentar(id, v)});
+    }
     case 'dataLembrete': {
       if(ehLembrete(it)) return abrirReagendar(anchor, it, sel);
       // o texto do lembrete entra junto com a data (ele só existe quando há data)
@@ -6200,6 +6226,7 @@ const ACOES = {
   'set-vinculo': d => { state.prefs.tarefas.vinculo = d.v; persistirPrefs(); render(); },
   'set-lembf': d => { state.prefs.tarefas.lembF = d.v; persistirPrefs(); render(); },
   'tog-arr': d => { toggleArr(state.prefs[d.sec][d.k], d.v); persistirPrefs(); render(); },
+  'exp-txt': d => { const S = state.ui.expTxt; if(S.has(d.k)) S.delete(d.k); else S.add(d.k); render(); },
   'cal-nav': d => {
     const c = state.prefs[d.sec].cal, ref = calRef(d.sec), n = Number(d.v);
     if(c.modo === 'semana') c.ref = addDias(ref, 7 * n);
@@ -7088,7 +7115,19 @@ function ligaDots(kb){
 /** Descrições e comentários cortados ganham um "mais" discreto (só quando há mesmo texto escondido). */
 function marcarTruncados(raiz){
   $$('.c-desc, .c-ult', raiz || $('#view')).forEach(function(el){
-    el.classList.toggle('trunc', el.scrollHeight > el.clientHeight + 2);
+    $$('.mais-t', el).forEach(m => m.remove());
+    const aberto = el.classList.contains('exp'), k = el.dataset.exp;
+    const trunc = !aberto && el.scrollHeight > el.clientHeight + 2;
+    el.classList.toggle('trunc', trunc);
+    // "mais" estende o texto na hora; "menos" recolhe (clicar no texto continua abrindo a edição)
+    if(k && (trunc || aberto)){
+      const b = document.createElement('span');
+      b.className = 'mais-t' + (aberto ? ' menos' : '');
+      b.setAttribute('role', 'button'); b.tabIndex = 0;
+      b.dataset.act = 'exp-txt'; b.dataset.k = k;
+      b.textContent = aberto ? 'menos' : 'mais';
+      el.appendChild(b);
+    }
   });
 }
 function renderView(){
