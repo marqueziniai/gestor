@@ -307,8 +307,9 @@ button.prog-wrap[aria-expanded="true"] .chev{transform:rotate(180deg)}
 .rasc-dica{font-size:11.5px;color:var(--text-3);margin-top:4px}
 .add-row{padding:6px 0 4px}
 /* Calendário: grade (mês/semana) + lista ao lado para agendar arrastando */
-.cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
-@media (max-width:1023px){.cal-wrap{grid-template-columns:minmax(0,1fr)}}
+.cal-wrap{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start}
+.cal-wrap>.cal-lado{order:-1}   /* desktop: listas à esquerda, calendário à direita */
+@media (max-width:1023px){.cal-wrap{grid-template-columns:minmax(0,1fr)}.cal-wrap>.cal-lado{order:0}}
 .cal-h{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px}
 .cal-h .ttl{font-size:16px;font-weight:680;margin:0 auto 0 6px;white-space:nowrap}
 .cal-h input[type=month]{height:34px;width:auto;padding:0 8px}
