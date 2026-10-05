@@ -120,14 +120,14 @@ svg{display:block;flex:none}
   .sidebar:not(.exp) .sb-item,.sidebar:not(.exp) .sb-new{justify-content:center;padding:8px}
   .sidebar:not(.exp) .sb-head{flex-direction:column;padding:12px 8px 8px}
   .sidebar:not(.exp) .sb-sec-line{display:block}
-  .sidebar:not(.exp) .sb-exp,.sidebar:not(.exp) .sb-sub{display:none}
+  .sidebar:not(.exp) .sb-exp,.sidebar:not(.exp) .sb-sub,.sidebar:not(.exp) .sb-add{display:none}
 }
 @media (min-width:1024px){
   .sidebar.compacta .lbl,.sidebar.compacta .sb-count,.sidebar.compacta .sb-sec,.sidebar.compacta .sb-new span,.sidebar.compacta .sb-name{display:none}
   .sidebar.compacta .sb-item,.sidebar.compacta .sb-new{justify-content:center;padding:8px}
   .sidebar.compacta .sb-head{flex-direction:column;padding:12px 8px 8px}
   .sidebar.compacta .sb-sec-line{display:block}
-  .sidebar.compacta .sb-exp,.sidebar.compacta .sb-sub{display:none}
+  .sidebar.compacta .sb-exp,.sidebar.compacta .sb-sub,.sidebar.compacta .sb-add{display:none}
 }
 .sb-sec-line{display:none;height:1px;background:var(--border);margin:10px 6px}
 
@@ -633,6 +633,10 @@ body.modo-sel #view .card .c-menu{visibility:hidden}   /* arrastar a linha não 
 .sb-exp{width:24px;height:36px;flex:none;display:grid;place-items:center;color:var(--text-3);border-radius:6px;margin-right:-4px}
 @media (hover:hover){.sb-exp:not(:disabled):hover{color:var(--text);background:var(--surface-2)}}
 .sb-exp:disabled{opacity:.3;cursor:default}
+.sb-add{width:28px;height:36px;flex:none;display:grid;place-items:center;color:var(--text-3);border-radius:6px;margin-left:2px}
+@media (hover:hover){.sb-add:hover{color:var(--accent);background:var(--accent-soft)}}
+.mais-add{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:50%;color:var(--text-3);margin-left:auto;cursor:pointer}
+.mais-add:active{background:var(--accent-soft);color:var(--accent)}
 .sb-sub{margin:0 0 4px 20px;padding-left:6px;border-left:1px solid var(--border)}
 .sb-sub .sb-item{min-height:36px;font-size:13.5px}
 .sb-cat.over .sb-item,.sb-item.over{background:var(--accent-soft);color:var(--accent);box-shadow:inset 0 0 0 2px var(--accent)}
@@ -3915,7 +3919,8 @@ function renderSidebar(){
       '<button type="button" class="sb-exp" data-act="tog-cat-sb" data-cat="' + esc(cat.id) + '" aria-expanded="' + aberta + '"' + (projs.length ? '' : ' disabled') +
         ' aria-label="' + (aberta ? 'Recolher' : 'Mostrar') + ' os projetos de ' + esc(cat.nome) + '">' + ic(aberta ? 'chevD' : 'chevR', 14) + '</button>' +
       '<button type="button" class="sb-item" data-act="nav-cat" data-cat="' + esc(cat.id) + '"' + (atual ? ' aria-current="page"' : '') + ' data-tip="' + esc(cat.nome) + '" aria-label="Categoria ' + esc(cat.nome) + ', ' + projs.length + ' projeto(s) ativo(s)">' +
-        '<span class="sb-dot" style="background:' + (cat.cor ? esc(cat.cor) : 'var(--text-3)') + '"></span><span class="lbl">' + esc(cat.nome) + '</span><span class="sb-count">' + projs.length + '</span></button></div>';
+        '<span class="sb-dot" style="background:' + (cat.cor ? esc(cat.cor) : 'var(--text-3)') + '"></span><span class="lbl">' + esc(cat.nome) + '</span><span class="sb-count">' + projs.length + '</span></button>' +
+      '<button type="button" class="sb-add" data-act="novo-proj-cat" data-cat="' + esc(cat.id) + '" data-tip="Novo projeto em ' + esc(cat.nome) + '" data-tip-sempre="1" aria-label="Novo projeto em ' + esc(cat.nome) + '">' + ic('plus',15) + '</button></div>';
     if(aberta) h += '<div class="sb-sub" role="group" aria-label="Projetos de ' + esc(cat.nome) + '">' + projs.map(function(p){
       const pr = progresso(p), parado = semProxima(p);
       return '<button type="button" class="sb-item" data-act="abrir-projeto" data-id="' + p.id + '" data-drop="1" data-drop-kind="projeto" data-drop-col="' + p.id + '"' + (r.view === 'projetos' && r.id === p.id ? ' aria-current="page"' : '') +
@@ -3968,7 +3973,8 @@ function sheetMais(){
     categorias().concat([{id:'sem', nome:'Sem categoria', cor:null}]).map(function(cat){
       const n = projetosDaCategoria(cat.id).filter(p => !concluido(p)).length;
       return '<button type="button" class="mais-item" data-act="nav-cat" data-cat="' + esc(cat.id) + '"' + (r.view === 'categoria' && r.id === cat.id ? ' aria-current="page"' : '') + '>' +
-        '<span class="mais-dot" style="background:' + (cat.cor ? esc(cat.cor) : 'var(--text-3)') + '"></span><span class="t">' + esc(cat.nome) + '<small>' + n + (n === 1 ? ' projeto ativo' : ' projetos ativos') + '</small></span></button>';
+        '<span class="mais-dot" style="background:' + (cat.cor ? esc(cat.cor) : 'var(--text-3)') + '"></span><span class="t">' + esc(cat.nome) + '<small>' + n + (n === 1 ? ' projeto ativo' : ' projetos ativos') + '</small></span>' +
+        '<span class="mais-add" role="button" tabindex="0" data-act="novo-proj-cat" data-cat="' + esc(cat.id) + '" aria-label="Novo projeto em ' + esc(cat.nome) + '">' + ic('plus',18) + '</span></button>';
     }).join('') + '<div class="divider"></div>' + (function(){
     const s = nuvemSessao();
     return s
@@ -6292,6 +6298,17 @@ const ACOES = {
   },
   'sub-add': (d, el) => { const i = el.parentElement.querySelector('input'); if(i) criarSubtarefa(d.pid, i.value); },
   'nova-tarefa': () => { const t = criarItem(Object.assign(padroesPara('tarefa'), {titulo:'Nova tarefa'})); abrirItem(t.id); setTimeout(() => { const i = $('#panel textarea[data-field="titulo"]'); if(i){ i.focus(); i.select(); } }, 280); },
+  'novo-proj-cat': d => {
+    fecharSheet(true);
+    const cat = d.cat === 'sem' ? null : d.cat;
+    if(cat && !getCat(cat)) return;
+    const p = criarItem({tipo:'projeto', secao:'projetos', titulo:'Novo projeto', categoriaId:cat}, {semRender:true});
+    const ab = state.prefs.catsAbertas; if(ab.indexOf(d.cat) === -1) ab.push(d.cat);   // a categoria abre e mostra o projeto novo
+    persistirPrefs();
+    irPara('#/projetos/' + p.id);
+    toast('Projeto criado em ' + (cat ? '“' + nomeCat(cat) + '”' : 'Sem categoria'), () => { removerItens([p.id]); persistir(); irPara('#/categoria/' + d.cat); });
+    setTimeout(() => { const i = $('#view textarea[data-field="titulo"]'); if(i){ i.focus(); i.select(); } }, 250);
+  },
   'novo-projeto': d => { const p = criarItem(Object.assign(padroesPara('projeto'), {titulo:'Novo projeto'}, d && getCat(d.cat) ? {categoriaId:d.cat} : {})); irPara('#/projetos/' + p.id); },
   'novo-ctx': () => sheetCaptura(),
   'tog-sel': () => state.ui.modoSel ? sairSelecao() : entrarSelecao(),
