@@ -306,6 +306,57 @@ button.prog-wrap[aria-expanded="true"] .chev{transform:rotate(180deg)}
 .card.rascunho .kcol-input{border:none;box-shadow:none;padding:4px 0;font-size:14.5px;font-weight:600;background:transparent}
 .rasc-dica{font-size:11.5px;color:var(--text-3);margin-top:4px}
 .add-row{padding:6px 0 4px}
+/* Calendário: grade (mês/semana) + lista ao lado para agendar arrastando */
+.cal-wrap{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+@media (max-width:1023px){.cal-wrap{grid-template-columns:minmax(0,1fr)}}
+.cal-h{display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:10px}
+.cal-h .ttl{font-size:16px;font-weight:680;margin:0 auto 0 6px;white-space:nowrap}
+.cal-h input[type=month]{height:34px;width:auto;padding:0 8px}
+.cal-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden;background:var(--surface)}
+.cal-dow{font-size:11px;font-weight:650;color:var(--text-3);padding:6px 8px;border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.03em}
+.cal-dia{min-height:108px;border-right:1px solid var(--border);border-bottom:1px solid var(--border);padding:4px;display:flex;flex-direction:column;gap:3px;min-width:0;transition:background var(--t)}
+.cal-grid>.cal-dia:nth-child(7n){border-right:none}
+.cal-dia.fora{background:var(--surface-2)}
+.cal-dia.fora .cal-num{color:var(--text-3)}
+.cal-dia.passado:not(.fora) .cal-num{color:var(--text-3)}
+.cal-dia.sel{box-shadow:inset 0 0 0 2px var(--accent)}
+.cal-dia.over{background:var(--accent-soft)}
+.cal-num{align-self:flex-start;font-size:12px;font-weight:650;min-width:26px;height:24px;border-radius:12px;padding:0 7px;color:var(--text-2)}
+.cal-dia.hoje .cal-num{background:var(--accent);color:var(--accent-on)}
+@media (hover:hover){.cal-num:hover{background:var(--surface-2)}}
+.cal-itens{display:flex;flex-direction:column;gap:3px;min-width:0}
+.cal-it{display:flex;align-items:center;gap:5px;font-size:12px;line-height:1.25;padding:3px 6px;border-radius:6px;background:var(--surface-2);border-left:3px solid var(--c,var(--text-3));cursor:grab;min-width:0;text-align:left;width:100%}
+.cal-it .t{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
+.cal-it.done .t,.cal-row.done .t{text-decoration:line-through;color:var(--text-3)}
+.cal-it.venc{background:var(--danger-soft)}
+.cal-mais{font-size:11.5px;font-weight:600;color:var(--text-3);text-align:left;padding:1px 6px;border-radius:6px}
+@media (hover:hover){.cal-mais:hover{color:var(--text)}}
+.cal-grid.semana .cal-dia{min-height:300px}
+@media (max-width:767px){
+  .cal-dia{min-height:56px;padding:3px 2px}
+  .cal-num{min-width:22px;height:22px;padding:0 5px;font-size:11.5px}
+  .cal-grid:not(.semana) .cal-itens{flex-direction:row;flex-wrap:wrap;gap:3px;padding:0 3px}
+  .cal-grid:not(.semana) .cal-it{width:8px;height:8px;padding:0;border:none;border-radius:50%;background:var(--c,var(--text-3))}
+  .cal-grid:not(.semana) .cal-it .t{display:none}
+  .cal-grid:not(.semana) .cal-mais{font-size:10.5px;padding:0 2px}
+  .cal-grid.semana{grid-template-columns:minmax(0,1fr)}
+  .cal-grid.semana .cal-dow{display:none}
+  .cal-grid.semana .cal-dia{min-height:52px;border-right:none}
+  .cal-grid.semana .cal-it{padding:6px 8px;font-size:13px}
+}
+.cal-lado{display:flex;flex-direction:column;gap:12px;min-width:0}
+@media (min-width:1024px){.cal-lado{position:sticky;top:calc(var(--tb-h,0px) + 12px)}.cal-lista{max-height:42vh;overflow-y:auto}}
+.cal-box{border:1px solid var(--border);border-radius:var(--r-lg);background:var(--surface);padding:10px;transition:background var(--t)}
+.cal-box.over{background:var(--accent-soft)}
+.cal-box h3{font-size:13.5px;font-weight:680;margin:0 0 8px;display:flex;align-items:center;gap:6px}
+.cal-box h3 .cnt{margin-left:auto}
+.cal-box .seg{margin-bottom:8px;max-width:100%;overflow-x:auto}
+.cal-lista{display:flex;flex-direction:column;gap:6px;min-height:36px}
+.cal-row{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:8px;background:var(--surface-2);font-size:13px;cursor:grab;border-left:3px solid var(--c,var(--text-3));text-align:left;width:100%}
+.cal-row .t{flex:1;min-width:0;overflow-wrap:anywhere}
+.cal-row .m{font-size:11.5px;color:var(--text-3);white-space:nowrap}
+.cal-row .m.venc{color:var(--danger)}
+.cal-vazio{font-size:12.5px;color:var(--text-3);padding:6px 4px}
 .aviso-vazio{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:13px;color:var(--text-2);margin:0 0 12px;padding:8px 12px;border:1px dashed var(--border);border-radius:var(--r-md)}
 .aviso-vazio>svg{flex:none;color:var(--text-3)}
 .aviso-vazio .acts{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
@@ -1234,9 +1285,9 @@ function prefsPadrao(){
   return {
     versao:4, tema:'auto', sidebarCompacta:false, sidebarExp:false, listaQuebra:true, larguras:{}, dicas:{swipe:false},
     entrada:{aba:'triagem', tipos:[], categorias:[], dtIni:'', dtFim:'', extrasF:[], ordem:'criacao-desc', agrupar:'nenhum', colapsados:[]},
-    hoje:{visao:'lista', agrupar:'faixa', periodo:'hoje-vencidos', custIni:'', custFim:'', datas:['lemb','entrega'], tipos:['projeto','tarefa','lemb'], categorias:[], extrasF:[], ordem:'data-asc', manual:[], colapsados:[]},
-    projetos:{visao:'kanban', agrupar:'status', statusF:[], categorias:[], extrasF:[], dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
-    tarefas:{visao:'lista', agrupar:'status', vinculo:'todas', lembF:'todas', statusF:[], categorias:[], projetosF:[], extrasF:[], dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
+    hoje:{visao:'lista', agrupar:'faixa', periodo:'hoje-vencidos', custIni:'', custFim:'', datas:['lemb','entrega'], tipos:['projeto','tarefa','lemb'], categorias:[], extrasF:[], cal:{modo:'mes', ref:'', regra:'semdata', pIni:'', pFim:''}, ordem:'data-asc', manual:[], colapsados:[]},
+    projetos:{visao:'kanban', agrupar:'status', statusF:[], categorias:[], extrasF:[], cal:{modo:'mes', ref:'', regra:'semdata', pIni:'', pFim:''}, dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
+    tarefas:{visao:'lista', agrupar:'status', vinculo:'todas', lembF:'todas', statusF:[], categorias:[], projetosF:[], extrasF:[], cal:{modo:'mes', ref:'', regra:'semdata', pIni:'', pFim:''}, dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
     projeto:{visao:'kanban', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
     categoria:{visao:'kanban', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false, statusF:[], extrasF:[], dtIni:'', dtFim:''},
     mostrarVazios:false,
@@ -1262,7 +1313,7 @@ const state = {
   ui:{
     rota:{view:'hoje', id:null, item:null, q:{}},
     busca:'', buscaConcl:'', feedFiltro:'tudo', addCol:null, editandoCmt:null, rascunhos:{},
-    recemConcluidos:new Set(), recemCriados:[], maisFerr:false, modoSel:false, sel:new Set(), estruturaAba:'status', maisCampos:false, focar:null,
+    recemConcluidos:new Set(), recemCriados:[], calDia:null, maisFerr:false, modoSel:false, sel:new Set(), estruturaAba:'status', maisCampos:false, focar:null,
     fixadosHoje:{},          // itens arrastados em Hoje nesta visita: id → campo de data alterado
     expandidos:new Set(),    // projetos com as tarefas abertas abaixo do card/linha
     animarChk:null           // id do item recém-concluído (anima o círculo depois do render)
@@ -3938,7 +3989,8 @@ function rotuloAgrupar(sec){ const a = opcoesAgrupar(sec).find(x => x[0] === sta
 function btnVisao(sec){
   const v = state.prefs[sec].visao;
   const b = (k, icone, rot) => '<button type="button" class="' + (v === k ? 'on' : '') + '" data-act="set-visao" data-sec="' + sec + '" data-v="' + k + '" aria-pressed="' + (v === k) + '" aria-label="Visão ' + rot + '">' + ic(icone,15) + '<span class="rot-v">' + rot + '</span></button>';
-  return '<div class="seg" role="group" aria-label="Visão">' + b('kanban','columns','Kanban') + b('lista','list','Lista') + b('foco','target','Foco') + '</div>';
+  return '<div class="seg" role="group" aria-label="Visão">' + b('kanban','columns','Kanban') + b('lista','list','Lista') + b('foco','target','Foco') +
+    (SECOES_CALENDARIO.indexOf(sec) !== -1 ? b('calendario','calendar','Calendário') : '') + '</div>';
 }
 /** O que a barra de ferramentas de cada seção oferece (vale também para o sheet "Filtros" do celular). */
 function optsFerramentas(sec){
@@ -3960,7 +4012,7 @@ function btnVerConcluidos(sec, compacto){
 function ferramentas(sec){
   const o = optsFerramentas(sec);
   const visao = o.visao === false ? 'lista' : state.prefs[sec].visao;
-  const foco = visao === 'foco';
+  const foco = visao === 'foco' || visao === 'calendario';
   let h = o.visao === false ? '' : btnVisao(sec);
   if(ehCelular()){
     // celular: só a visão, "Filtros (n)" (filtros, ordem, agrupamento e exibição num sheet) e os concluídos
@@ -4003,7 +4055,7 @@ function sheetExibicao(sec){
     const o = optsFerramentas(sec), visao = o.visao === false ? 'lista' : state.prefs[sec].visao;
     return (sec === 'entrada' ? '<button type="button" class="btn blk" data-act="sheet-layout" data-v="entrada">' + ic('sliders',15) + 'Campos da Entrada</button>' +
         swHTML('Mostrar campos vazios', 'Campos sem valor aparecem como “Sem …”; toque para preencher', 'tog-vazios', !!state.prefs.mostrarVazios)
-      : visao === 'foco' ? '<p class="hint" style="margin:0 0 10px">' + ic('info',13) + '<span>No Foco, cada linha mostra só o essencial. Troque para Kanban ou Lista para escolher os campos.</span></p>'
+      : visao === 'foco' || visao === 'calendario' ? '<p class="hint" style="margin:0 0 10px">' + ic('info',13) + '<span>No ' + (visao === 'foco' ? 'Foco' : 'Calendário') + ', cada item mostra só o essencial. Troque para Kanban ou Lista para escolher os campos.</span></p>'
         : '<button type="button" class="btn blk" data-act="sheet-layout" data-v="' + visao + '">' + ic('sliders',15) + rotuloLayout(visao) + '</button>' +
           swHTML('Mostrar campos vazios', 'Campos sem valor aparecem como “Sem …”; toque para preencher', 'tog-vazios', !!state.prefs.mostrarVazios)) +
       swHTML('Quebrar linhas', 'Padrão: nada fica cortado', 'tog-quebra', state.prefs.listaQuebra);
@@ -4012,7 +4064,7 @@ function sheetExibicao(sec){
 /** Sheet "Filtros" do celular: filtros, ordem, agrupamento, exibição e concluídos num lugar só. */
 function corpoOpcoes(sec){
   const o = optsFerramentas(sec), p = state.prefs[sec];
-  const visao = o.visao === false ? 'lista' : p.visao, foco = visao === 'foco';
+  const visao = o.visao === false ? 'lista' : p.visao, foco = visao === 'foco' || visao === 'calendario';
   const sw = (rot, sub, act, on, attrs) => '<div class="switch"><span class="tx">' + rot + (sub ? '<small>' + sub + '</small>' : '') + '</span><button type="button" class="toggle' + (on ? ' on' : '') + '" data-act="' + act + '"' + (attrs || '') + ' role="switch" aria-checked="' + on + '" aria-label="' + rot + '"></button></div>';
   let h = '';
   if(o.filtros !== false) h += corpoFiltros(sec);
@@ -4278,8 +4330,8 @@ function corpoFiltros(sec){
   }
   return h;
 }
-function aplicaFiltros(arr, sec){
-  const p = state.prefs[sec];
+function aplicaFiltros(arr, sec, o){
+  const p = state.prefs[sec], semDatas = o && o.semDatas;   // no Calendário, as datas vêm do próprio calendário
   return arr.filter(function(it){
     if(p.tipos && p.tipos.length && tiposValem(sec) && p.tipos.indexOf(it.tipo || 'sem') === -1) return false;
     if(p.statusF && p.statusF.length && p.statusF.indexOf(statusEfetivo(it)) === -1) return false;
@@ -4288,7 +4340,7 @@ function aplicaFiltros(arr, sec){
     if(!passaExtras(it, sec)) return false;
     if(sec === 'tarefas' && p.lembF === 'lemb' && !ehLembrete(it)) return false;
     if(sec === 'tarefas' && p.lembF === 'comuns' && ehLembrete(it)) return false;
-    if(p.dtIni || p.dtFim){
+    if(!semDatas && (p.dtIni || p.dtFim)){
       const ds = [it.dataLembrete, it.dataEntrega].filter(Boolean);
       if(!ds.some(d => (!p.dtIni || d >= p.dtIni) && (!p.dtFim || d <= p.dtFim))) return false;
     }
@@ -4456,9 +4508,113 @@ function viewFuturo(){
   return intro + listaHTML('entrada', {itens:lista}, ctx);
 }
 
+/* ---------- CALENDÁRIO (Hoje, Projetos e Tarefas) ---------- */
+const SECOES_CALENDARIO = ['hoje','projetos','tarefas'];
+/** No calendário vale a Data de Entrega; lembretes usam a data do lembrete. */
+const campoCal = it => ehLembrete(it) ? 'dataLembrete' : 'dataEntrega';
+const dataCal = it => it[campoCal(it)] || null;
+/** O que cada seção leva para o calendário: os mesmos filtros, menos período/intervalo de datas (o calendário mostra todas as datas). */
+function itensCalendario(sec){
+  const p = state.prefs[sec];
+  if(sec === 'hoje') return filtraBusca(items().filter(it => ativo(it) && it.tipo && (!concluido(it) || state.ui.recemConcluidos.has(it.id)) &&
+    p.tipos.indexOf(tipoHoje(it)) !== -1 && (!p.categorias.length || p.categorias.indexOf(it.categoriaId || 'sem') !== -1) && passaExtras(it, 'hoje')));
+  if(sec === 'projetos') return filtraConcluidos(filtraBusca(aplicaFiltros(items().filter(i => i.tipo === 'projeto' && i.secao === 'projetos'), 'projetos', {semDatas:true})), 'projetos');
+  let base = items().filter(i => i.tipo === 'tarefa' && i.secao === 'tarefas');
+  if(p.vinculo === 'com') base = base.filter(i => !!i.projetoId);
+  if(p.vinculo === 'sem') base = base.filter(i => !i.projetoId);
+  return filtraConcluidos(filtraBusca(aplicaFiltros(base, 'tarefas', {semDatas:true})), 'tarefas');
+}
+function calRef(sec){ const c = state.prefs[sec].cal || {}; return isoValido(c.ref) ? c.ref : hojeISO(); }
+/** Intervalo visível: a semana, ou as semanas inteiras que cobrem o mês. */
+function calIntervalo(sec){
+  const c = state.prefs[sec].cal, ref = calRef(sec);
+  if(c.modo === 'semana') return {ini:inicioSemana(ref), fim:fimSemana(ref)};
+  const d = parseISO(ref), m0 = toISO(new Date(d.getFullYear(), d.getMonth(), 1)), m1 = toISO(new Date(d.getFullYear(), d.getMonth() + 1, 0));
+  return {ini:inicioSemana(m0), fim:fimSemana(m1), m0, m1};
+}
+const corCal = it => { const c = getCat(it.categoriaId); if(c) return c.cor; const s = it.tipo && !ehLembrete(it) ? statusPorId(it.tipo, it.status) : null; return s ? s.cor : 'var(--text-3)'; };
+const DIAS_SEM = ['Dom','Seg','Ter','Qua','Qui','Sex','Sáb'];
+function fmtDiaLongo(iso){ const d = parseISO(iso); return DIAS_SEM[d.getDay()] + ', ' + d.getDate() + ' de ' + MESES[d.getMonth()]; }
+/** Item dentro do dia (arrastável; clique abre o card). */
+function calItHTML(it){
+  const venc = !concluido(it) && dataCal(it) && dataCal(it) < hojeISO();
+  return '<button type="button" class="cal-it' + (concluido(it) ? ' done' : '') + (venc ? ' venc' : '') + '" style="--c:' + esc(corCal(it)) + '" data-drag-id="' + it.id + '" data-sel-id="' + it.id + '" data-act="abrir-item" data-id="' + it.id + '"' +
+    ' title="' + esc(it.titulo) + '" aria-label="' + esc(rotuloTipo(it) + ': ' + it.titulo) + '">' + (ehLembrete(it) ? ic('bell',11) : it.tipo === 'projeto' ? ic('folder',11) : '') + '<span class="t">' + esc(it.titulo) + '</span></button>';
+}
+/** Linha da lista ao lado (arrastável para um dia). */
+function calRowHTML(it, mostraData){
+  const d = dataCal(it), venc = d && !concluido(it) && d < hojeISO();
+  const proj = it.tipo === 'tarefa' && it.projetoId ? nomeProjeto(it.projetoId) : '';
+  return '<button type="button" class="cal-row' + (concluido(it) ? ' done' : '') + '" style="--c:' + esc(corCal(it)) + '" data-drag-id="' + it.id + '" data-sel-id="' + it.id + '" data-act="abrir-item" data-id="' + it.id + '">' +
+    ic(ehLembrete(it) ? 'bell' : it.tipo === 'projeto' ? 'folder' : 'checkSq', 14) + '<span class="t">' + esc(it.titulo) + (proj ? '<span class="m"> · ' + esc(proj) + '</span>' : '') + '</span>' +
+    (mostraData ? '<span class="m' + (venc ? ' venc' : '') + '">' + (d ? esc(fmtCurta(d)) : 'Sem data') + '</span>' : '') + '</button>';
+}
+const REGRAS_CAL = [['semdata','Sem data'],['vencidas','Vencidas'],['todas','Todas'],['periodo','Período']];
+function calendarioHTML(sec){
+  const c = state.prefs[sec].cal, h = hojeISO(), semana = c.modo === 'semana', iv = calIntervalo(sec), ref = calRef(sec);
+  const itens = ordenar(itensCalendario(sec), state.prefs[sec].ordem === 'manual' ? 'entrega-asc' : state.prefs[sec].ordem, ctxOrdem(sec, {motivo: it => dataCal(it) ? {iso:dataCal(it)} : null}));
+  const porDia = {};
+  itens.forEach(it => { const d = dataCal(it); if(d && d >= iv.ini && d <= iv.fim) (porDia[d] = porDia[d] || []).push(it); });
+  // dia selecionado: o escolhido (se estiver à vista), senão hoje, senão o primeiro dia do período
+  const dSel = state.ui.calDia && state.ui.calDia >= iv.ini && state.ui.calDia <= iv.fim ? state.ui.calDia : h >= (iv.m0 || iv.ini) && h <= (iv.m1 || iv.fim) ? h : (iv.m0 || iv.ini);
+  const d0 = parseISO(ref);
+  const titulo = semana ? (function(){ const a = parseISO(iv.ini), b = parseISO(iv.fim);
+      return a.getMonth() === b.getMonth() ? a.getDate() + '–' + b.getDate() + ' de ' + MESES[b.getMonth()] + ' ' + b.getFullYear()
+        : a.getDate() + ' ' + MESES[a.getMonth()].slice(0,3) + ' – ' + b.getDate() + ' ' + MESES[b.getMonth()].slice(0,3) + ' ' + b.getFullYear(); })()
+    : MESES[d0.getMonth()].charAt(0).toUpperCase() + MESES[d0.getMonth()].slice(1) + ' de ' + d0.getFullYear();
+  const at = ' data-sec="' + sec + '"';
+  const cab = '<div class="cal-h">' +
+    '<button type="button" class="icon-btn" data-act="cal-nav" data-v="-1"' + at + ' aria-label="' + (semana ? 'Semana anterior' : 'Mês anterior') + '">' + ic('chevL',18) + '</button>' +
+    '<button type="button" class="btn sm" data-act="cal-hoje"' + at + '>Hoje</button>' +
+    '<button type="button" class="icon-btn" data-act="cal-nav" data-v="1"' + at + ' aria-label="' + (semana ? 'Próxima semana' : 'Próximo mês') + '">' + ic('chevR',18) + '</button>' +
+    '<span class="ttl" aria-live="polite">' + esc(titulo) + '</span>' +
+    '<label class="sr-only" for="calMes-' + sec + '">Escolher o mês</label><input class="inp" type="month" id="calMes-' + sec + '" data-act="cal-mes"' + at + ' value="' + esc(ref.slice(0,7)) + '">' +
+    '<div class="seg" role="group" aria-label="Período do calendário">' + [['mes','Mês'],['semana','Semana']].map(x =>
+      '<button type="button" class="' + (c.modo === x[0] ? 'on' : '') + '" aria-pressed="' + (c.modo === x[0]) + '" data-act="cal-modo" data-v="' + x[0] + '"' + at + '>' + x[1] + '</button>').join('') + '</div></div>';
+  const LIM = semana ? 999 : 3;
+  let grade = semana ? '' : ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map(d => '<div class="cal-dow" aria-hidden="true">' + d + '</div>').join('');
+  for(let d = iv.ini; d <= iv.fim; d = addDias(d, 1)){
+    const its = porDia[d] || [], dt = parseISO(d);
+    const fora = !semana && (d < iv.m0 || d > iv.m1);
+    const cls = 'cal-dia' + (fora ? ' fora' : '') + (d === h ? ' hoje' : '') + (d < h ? ' passado' : '') + (d === dSel ? ' sel' : '');
+    const rot = semana ? DIAS_SEM[dt.getDay()] + ' ' + dt.getDate() : String(dt.getDate());
+    grade += '<div class="' + cls + '" data-drop="1" data-drop-kind="cal-dia" data-drop-col="' + d + '" role="group" aria-label="' + esc(fmtDiaLongo(d)) + (its.length ? ', ' + its.length + (its.length === 1 ? ' item' : ' itens') : '') + '">' +
+      '<button type="button" class="cal-num" data-act="cal-sel" data-v="' + d + '"' + at + ' aria-label="Ver ' + esc(fmtDiaLongo(d)) + '">' + rot + '</button>' +
+      '<div class="cal-itens">' + its.slice(0, LIM).map(calItHTML).join('') + '</div>' +
+      (its.length > LIM ? '<button type="button" class="cal-mais" data-act="cal-sel" data-v="' + d + '"' + at + '>+' + (its.length - LIM) + ' mais</button>' : '') + '</div>';
+  }
+  // ao lado: o dia selecionado e a lista para agendar (pela regra escolhida)
+  const doDia = itens.filter(it => dataCal(it) === dSel);
+  const caixaDia = '<section class="cal-box" data-drop="1" data-drop-kind="cal-dia" data-drop-col="' + dSel + '" aria-label="Itens de ' + esc(fmtDiaLongo(dSel)) + '">' +
+    '<h3>' + ic('calendar',14) + esc(fmtDiaLongo(dSel)) + '<span class="cnt">' + doDia.length + '</span></h3>' +
+    '<div class="cal-lista" data-rol="cal-dia">' + (doDia.length ? doDia.map(it => calRowHTML(it, false)).join('') : '<p class="cal-vazio">Nada neste dia.</p>') + '</div>' +
+    '<div class="add-row"><button type="button" class="add-grupo" data-act="cal-novo" data-v="' + dSel + '"' + at + '>' + ic('plus',15) + 'Adicionar neste dia</button></div></section>';
+  const regra = c.regra || 'semdata';
+  let lado = itens;
+  if(regra === 'semdata') lado = itens.filter(it => !dataCal(it));
+  else if(regra === 'vencidas') lado = itens.filter(it => dataCal(it) && dataCal(it) < h && !concluido(it));
+  else if(regra === 'periodo') lado = itens.filter(it => dataCal(it) && (!c.pIni || dataCal(it) >= c.pIni) && (!c.pFim || dataCal(it) <= c.pFim));
+  if(regra !== 'semdata') lado = lado.slice().sort((a, b) => (dataCal(a) || '9999') < (dataCal(b) || '9999') ? -1 : (dataCal(a) || '9999') > (dataCal(b) || '9999') ? 1 : 0);
+  const caixaLista = '<section class="cal-box"' + (regra === 'semdata' ? ' data-drop="1" data-drop-kind="cal-semdata" data-drop-col=""' : '') + ' aria-label="Para agendar">' +
+    '<h3>' + ic('inbox',14) + 'Para agendar<span class="cnt">' + lado.length + '</span></h3>' +
+    '<div class="seg" role="group" aria-label="Quais itens mostrar">' + REGRAS_CAL.map(x =>
+      '<button type="button" class="' + (regra === x[0] ? 'on' : '') + '" aria-pressed="' + (regra === x[0]) + '" data-act="cal-regra" data-v="' + x[0] + '"' + at + '>' + x[1] + '</button>').join('') + '</div>' +
+    (regra === 'periodo' ? '<div style="display:flex;gap:8px;margin-bottom:8px"><div class="field" style="flex:1"><label for="calPI-' + sec + '">De</label><input class="inp" type="date" id="calPI-' + sec + '" data-act="cal-p" data-k="pIni"' + at + ' value="' + esc(c.pIni) + '"></div>' +
+      '<div class="field" style="flex:1"><label for="calPF-' + sec + '">Até</label><input class="inp" type="date" id="calPF-' + sec + '" data-act="cal-p" data-k="pFim"' + at + ' value="' + esc(c.pFim) + '"></div></div>' : '') +
+    '<div class="cal-lista" data-rol="cal-lado">' + (lado.length ? lado.map(it => calRowHTML(it, regra !== 'semdata')).join('')
+      : '<p class="cal-vazio">' + ({semdata:'Tudo com data. 🎉', vencidas:'Nada vencido.', todas:'Nada por aqui.', periodo:'Nada nesse período.'}[regra]) + '</p>') + '</div>' +
+    '<p class="hint">' + ic('info',13) + '<span>' + (ehToque() ? 'Segure um item e arraste' : 'Arraste um item') + ' para um dia do calendário para mudar a ' + esc(nomeCampo('dataEntrega').toLowerCase()) +
+      (regra === 'semdata' ? '; solte aqui para tirar a data' : '') + '.</span></p></section>';
+  const aviso = sec === 'hoje' && state.prefs.hoje.periodo !== 'hoje-vencidos' || (state.prefs[sec].dtIni || state.prefs[sec].dtFim)
+    ? '<p class="hint" style="margin:0 0 8px">' + ic('info',13) + '<span>No Calendário, o filtro de período/intervalo de datas não se aplica: o calendário mostra todas as datas. Os demais filtros valem.</span></p>' : '';
+  return aviso + '<div class="cal-wrap"><div class="cal-main">' + cab + '<div class="cal-grid' + (semana ? ' semana' : '') + '">' + grade + '</div></div>' +
+    '<aside class="cal-lado">' + caixaDia + caixaLista + '</aside></div>';
+}
+
 /* ---------- HOJE ---------- */
 function viewHoje(){
   const p = state.prefs.hoje;
+  if(p.visao === 'calendario') return calendarioHTML('hoje');
   const lista = ordenar(filtraBusca(itensHoje()), p.ordem, ctxOrdem('hoje', {motivo:motivoHoje}));
   // sem itens: aviso no topo, e a visão (colunas, grupos, lista ou Foco) continua aparecendo para adicionar
   if(!lista.length){
@@ -4511,6 +4667,7 @@ function gruposHoje(lista, ag){
 /* ---------- PROJETOS (somente projetos) ---------- */
 function viewProjetos(){
   const p = state.prefs.projetos;
+  if(p.visao === 'calendario') return calendarioHTML('projetos');
   const lista = ordenar(filtraConcluidos(filtraBusca(aplicaFiltros(items().filter(i => i.tipo === 'projeto' && i.secao === 'projetos'), 'projetos')), 'projetos'), p.ordem, ctxOrdem('projetos'));
   if(!lista.length) avisarVazio(contaFiltros('projetos') || state.ui.busca.trim().length >= 2 ? 'Nenhum projeto com esses filtros.' + ADICIONE_ABAIXO : 'Nenhum projeto por aqui. Projetos reúnem tarefas com um objetivo comum.',
     (contaFiltros('projetos') ? btnLimparFiltros('projetos') : '') + (state.ui.busca ? btnLimparBusca() : ''));
@@ -4618,6 +4775,7 @@ function gruposStatusTarefa(lista){
 /* ---------- TAREFAS (somente tarefas) ---------- */
 function viewTarefas(){
   const p = state.prefs.tarefas;
+  if(p.visao === 'calendario') return calendarioHTML('tarefas');
   let base = items().filter(i => i.tipo === 'tarefa' && i.secao === 'tarefas');
   if(p.vinculo === 'com') base = base.filter(i => !!i.projetoId);
   if(p.vinculo === 'sem') base = base.filter(i => !i.projetoId);
@@ -5110,13 +5268,15 @@ function aplicarRascunho(it, r, mudBase){
   return mud;
 }
 /** Novo item: na Entrada (sem tipo), tarefa ou projeto. Começa pelo tipo da tela e já vem com o que os filtros dela indicam. */
-function sheetCaptura(tipoInicial){
+function sheetCaptura(tipoInicial, extra){
   const sec = secDaTela();
+  // padrões da tela + o que veio de quem abriu (ex.: o dia escolhido no calendário)
+  const padrDaFolha = (t, s) => Object.assign(padroesPara(t, s), extra || {});
   let tipo = tipoInicial !== undefined ? tipoInicial : padroesDoContexto(sec).tipo;
   let r = null;
   // (re)monta o rascunho no tipo escolhido: guarda o que já foi preenchido e completa com os padrões da tela
   const montar = function(){
-    const pad = padroesPara(tipo, sec), ant = r;
+    const pad = padrDaFolha(tipo, sec), ant = r;
     r = novoRascunho(tipo, ant);
     camposFormulario(tipo).forEach(function(c){
       if(c.sistema && pad[c.id] !== undefined && (r[c.id] == null || r[c.id] === '') && !(ant && c.id in ant)) r[c.id] = pad[c.id];
@@ -5129,7 +5289,7 @@ function sheetCaptura(tipoInicial){
   const segHTML = () => '<div class="seg cap-tipo" role="radiogroup" aria-label="Criar como">' + ['', 'tarefa', 'projeto'].map(k =>
     '<button type="button" role="radio" data-cap-tipo="' + k + '" class="' + ((tipo || '') === k ? 'on' : '') + '" aria-checked="' + ((tipo || '') === k) + '">' + ic(k === 'projeto' ? 'folder' : k === 'tarefa' ? 'checkSq' : 'inbox', 14) + NOMES[k] + '</button>').join('') + '</div>';
   const herdadoHTML = function(){
-    const pad = padroesPara(tipo, sec), partes = [];
+    const pad = padrDaFolha(tipo, sec), partes = [];
     if('categoriaId' in pad && r.categoriaId === pad.categoriaId) partes.push(pad.categoriaId ? nomeCat(pad.categoriaId) : 'Sem categoria');
     ['dataEntrega','dataLembrete'].forEach(k => { if(pad[k] && r[k] === pad[k]) partes.push(rotuloCurto(k) + ' ' + fmtRelativa(pad[k])); });
     if(pad.projetoId && r.projetoId === pad.projetoId) partes.push(nomeProjeto(pad.projetoId));
@@ -5139,7 +5299,7 @@ function sheetCaptura(tipoInicial){
   };
   const dicaTipo = () => noFuturo() ? 'Todos os campos são opcionais. O item vai para o Futuro (aba da Entrada).' : tipo ? 'Todos os campos são opcionais. ' + (tipo === 'projeto' ? 'O projeto vai para Projetos.' : 'A tarefa vai para Tarefas' + (r.projetoId ? ', dentro do projeto.' : '.'))
     : 'Todos os campos são opcionais. O item entra na Entrada, sem tipo definido.';
-  const noFuturo = () => padroesPara(tipo, sec).secao === 'futuro';
+  const noFuturo = () => padrDaFolha(tipo, sec).secao === 'futuro';
   const rotSalvar = () => noFuturo() ? 'Salvar no Futuro' : tipo === 'projeto' ? 'Criar projeto' : tipo === 'tarefa' ? 'Criar tarefa' : 'Salvar na Entrada';
   const placeholder = () => tipo === 'projeto' ? 'Nome do projeto' : tipo === 'tarefa' ? 'O que precisa ser feito?' : 'O que você precisa lembrar?';
   abrirSheet({titulo: tipo === 'projeto' ? 'Novo projeto' : tipo === 'tarefa' ? 'Nova tarefa' : 'Captura rápida', autofoco:'sempre', corpo:
@@ -5179,7 +5339,7 @@ function sheetCaptura(tipoInicial){
       const salvar = function(){
         const t = $('#capTitulo', el);
         if(!t.value.trim()){ t.focus(); toast('Digite um título'); return; }
-        const pad = padroesPara(tipo, sec);
+        const pad = padrDaFolha(tipo, sec);
         const base = Object.assign(pad, {titulo:t.value.trim(), extras:Object.assign({}, pad.extras, r.extras), recorrencia:Object.assign({}, r.recorrencia)});
         camposFormulario(tipo).forEach(c => { if(c.sistema) base[c.id] = c.tipo === 'textoLongo' ? String(r[c.id] || '').trim() : (r[c.id] || null); });
         if(tipo) base.status = r.status;
@@ -5435,7 +5595,7 @@ function ativarDrag(){
   if(ptr.toque) vibrar(12);
   // celular: zonas de soltar fixas no rodapé com os nomes das colunas (sem depender do auto-scroll lateral)
   const kb = ptr.el.closest('.kanban');
-  if(ehCelular()) montarDropbar(kb, kb ? ptr.el.closest('.kcol') : null, getItem(ptr.id));
+  if(ehCelular() && !ptr.el.closest('.cal-wrap')) montarDropbar(kb, kb ? ptr.el.closest('.kcol') : null, getItem(ptr.id));
 }
 /** Celular: barra fixa no rodapé com as colunas do quadro e, abaixo, os destinos (virar projeto/tarefa e categorias). */
 function montarDropbar(kb, colDoCard, it){
@@ -5623,6 +5783,15 @@ function aplicarDrop(kind, col, id){
   }else if(kind === 'cat-destino'){
     mudarCategoria(id, col === 'sem' ? null : col, {confirmar:true});
     return;
+  }else if(kind === 'cal-dia' || kind === 'cal-semdata'){
+    const campo = campoCal(it), nova = kind === 'cal-dia' ? col : null, de = it[campo] || null;
+    if(de === nova) return;
+    if(!nova && ehLembrete(it)){ toast('Lembretes precisam de data: use Reagendar ou Cancelar lembrete'); return; }
+    const snap = snapshot();
+    definirData(id, campo, nova);
+    if(nova) state.ui.calDia = nova;
+    toast(rotuloCurto(campo) + ': ' + (de ? fmtCurta(de) : 'sem data') + ' → ' + (nova ? fmtCurta(nova) : 'sem data'), () => restaurar(snap));
+    return;
   }else if(kind.indexOf('x:') === 0){
     const cid = kind.slice(2), def = campoDef(cid);
     if(!def || !campoAplica(def, it)){ toast('“' + (def ? def.nome : 'Campo') + '” não se aplica a este item'); return; }
@@ -5752,6 +5921,7 @@ function loteExtra(cid, v){
 }
 function aplicarDropLote(kind, col){
   if(kind.indexOf('x:') === 0) return loteExtra(kind.slice(2), col === '__sem' ? null : col);
+  if(kind === 'cal-dia' || kind === 'cal-semdata') return loteData(kind === 'cal-dia' ? col : null);
   if(kind === 'categoria' || kind === 'cat-destino') return loteCategoria(col === 'sem' ? null : col);
   if(kind === 'projeto') return loteProjeto(col === 'sem' ? null : col);
   if(kind === 'converter'){ toast('Converta um item de cada vez'); return; }
@@ -6007,6 +6177,17 @@ const ACOES = {
   'set-vinculo': d => { state.prefs.tarefas.vinculo = d.v; persistirPrefs(); render(); },
   'set-lembf': d => { state.prefs.tarefas.lembF = d.v; persistirPrefs(); render(); },
   'tog-arr': d => { toggleArr(state.prefs[d.sec][d.k], d.v); persistirPrefs(); render(); },
+  'cal-nav': d => {
+    const c = state.prefs[d.sec].cal, ref = calRef(d.sec), n = Number(d.v);
+    if(c.modo === 'semana') c.ref = addDias(ref, 7 * n);
+    else { const x = parseISO(ref); c.ref = toISO(new Date(x.getFullYear(), x.getMonth() + n, 1)); }
+    state.ui.calDia = null; persistirPrefs(); render();
+  },
+  'cal-hoje': d => { state.prefs[d.sec].cal.ref = hojeISO(); state.ui.calDia = hojeISO(); persistirPrefs(); render(); },
+  'cal-modo': d => { const c = state.prefs[d.sec].cal; if(state.ui.calDia) c.ref = state.ui.calDia; c.modo = d.v; persistirPrefs(); render(); },
+  'cal-sel': d => { state.ui.calDia = d.v; state.ui.focar = '[data-act="cal-sel"][data-v="' + d.v + '"]'; render(); },
+  'cal-regra': d => { state.prefs[d.sec].cal.regra = d.v; persistirPrefs(); render(); },
+  'cal-novo': d => sheetCaptura(undefined, {dataEntrega:d.v}),
   'tog-xf': d => { const e = filtroExtraOuNovo(state.prefs[d.sec], d.c); e.vals = e.vals || []; toggleArr(e.vals, d.v); persistirPrefs(); render(); },
   'rm-xf': d => { const p = state.prefs[d.sec]; p.extrasF = (p.extrasF || []).filter(e => e.c !== d.c); persistirPrefs(); render(); },
   'rm-arr': d => { const a = state.prefs[d.sec][d.k], i = a.indexOf(d.v); if(i !== -1) a.splice(i, 1); persistirPrefs(); render(); },
@@ -6189,6 +6370,8 @@ document.addEventListener('change', function(e){
   if(el.closest('#popRoot')) return;
   switch(d.act){
     case 'set-cust': state.prefs[d.sec][d.k] = el.value; persistirPrefs(); render(); return;
+    case 'cal-mes': if(/^\d{4}-\d{2}$/.test(el.value)){ state.prefs[d.sec].cal.ref = el.value + '-01'; state.ui.calDia = null; persistirPrefs(); render(); } return;
+    case 'cal-p': state.prefs[d.sec].cal[d.k] = el.value; persistirPrefs(); render(); return;
     case 'set-xf': { const e = filtroExtraOuNovo(state.prefs[d.sec], d.c); e[d.k] = el.value; persistirPrefs(); render(); return; }
     case 'cat-cor': { const c = getCat(d.id); if(c){ c.cor = el.value; persistir(); render(); } return; }
     case 'cat-nome': { const c = getCat(d.id); const v = el.value.trim(); if(c && v && v !== c.nome){ c.nome = v; persistir(); render(); toast('Categoria renomeada'); } else if(c) el.value = c.nome; return; }
@@ -6884,8 +7067,10 @@ function renderView(){
   const chaveCol = c => (c.dataset.dropKind || '') + '|' + (c.dataset.dropCol || '');
   const rolCols = {};
   $$('.kcol', vp).forEach(function(c){ const b = $('.kcol-body', c); if(b && b.scrollTop) rolCols[chaveCol(c)] = b.scrollTop; });
+  $$('[data-rol]', vp).forEach(function(b){ if(b.scrollTop) rolCols['rol|' + b.dataset.rol] = b.scrollTop; });
   vp.innerHTML = viewHTML();
   $$('.kcol', vp).forEach(function(c){ const b = $('.kcol-body', c), y = rolCols[chaveCol(c)]; if(b && y) b.scrollTop = y; });
+  $$('[data-rol]', vp).forEach(function(b){ const y = rolCols['rol|' + b.dataset.rol]; if(y) b.scrollTop = y; });
   $$('.kanban', vp).forEach(function(kb, i){ if(i === 0) kb.scrollLeft = kl; ligaDots(kb); });   // a página da categoria pode ter dois quadros
   const lw = $('.lista-wrap', vp); if(lw) lw.scrollLeft = ll;
   const inp = $('#addColInput');
