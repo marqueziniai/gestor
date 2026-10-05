@@ -316,6 +316,9 @@ button.prog-wrap[aria-expanded="true"] .chev{transform:rotate(180deg)}
 .card.rascunho .kcol-input{border:none;box-shadow:none;padding:4px 0;font-size:14.5px;font-weight:600;background:transparent}
 .rasc-dica{font-size:11.5px;color:var(--text-3);margin-top:4px}
 .add-row{padding:6px 0 4px}
+.dp-card{display:flex;align-items:center;gap:6px;margin:-2px 0 10px;padding:6px 9px;border-radius:var(--r-sm);background:var(--surface-2);font-size:12.5px;font-weight:600;color:var(--text-2);min-width:0}
+.dp-card svg{flex:none;color:var(--text-3)}
+.dp-card span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
 /* Calendário: grade (mês/semana) + lista ao lado para agendar arrastando */
 .cal-wrap{display:grid;grid-template-columns:300px minmax(0,1fr);gap:16px;align-items:start}
 .cal-wrap>.cal-lado{order:-1}   /* desktop: listas à esquerda, calendário à direita */
@@ -1938,7 +1941,7 @@ function definirProxima(pid, tid){
 /** Revisão: depois de escolher a próxima ação, pergunta quando fazer (Data de Entrega). */
 function pedirDataProxima(tid){
   const t = getItem(tid); if(!t) return;
-  setTimeout(() => abrirDatePicker($('.rev') || $('#view'), {titulo:'Quando fazer “' + t.titulo + '”?', valor:t.dataEntrega, escolher:v => definirData(tid, 'dataEntrega', v)}), 80);
+  setTimeout(() => abrirDatePicker($('.rev') || $('#view'), {titulo:'Quando fazer?', card:cardDoPicker(t), valor:t.dataEntrega, escolher:v => definirData(tid, 'dataEntrega', v)}), 80);
 }
 function escolherProxima(anchor, pid, o){
   o = o || {};
@@ -2108,7 +2111,7 @@ function marcarNovoLembrete(origemId, anchor){
   const o = getItem(origemId); if(!o) return;
   let rec = null, texto = o.textoLembrete || '';
   const alvo = anchor && document.contains(anchor) ? anchor : null;
-  abrirDatePicker(alvo, {titulo:'Novo lembrete — ' + o.titulo, valor:null, rec:null, semLimpar:true,
+  abrirDatePicker(alvo, {titulo:'Novo lembrete', card:cardDoPicker(o), valor:null, rec:null, semLimpar:true,
     dicaRec:'Com repetição, concluir o lembrete já agenda o próximo.',
     recorrer:r => { rec = r; },
     texto:{rotulo:nomeCampo('textoLembrete'), valor:texto, salvar:v => { texto = v; }},
@@ -3315,14 +3318,14 @@ function abrirEditorCampo(anchor, id, cid){
     case 'dataLembrete': {
       if(ehLembrete(it)) return abrirReagendar(anchor, it, sel);
       // o texto do lembrete entra junto com a data (ele só existe quando há data)
-      return abrirDatePicker(anchor, {titulo:nome, valor:it[cid], rec:recDe(it, cid), sel,
+      return abrirDatePicker(anchor, {titulo:nome, card:cardDoPicker(it), valor:it[cid], rec:recDe(it, cid), sel,
         dicaRec:'Com repetição, concluir o lembrete já agenda o próximo.',
         texto:{rotulo:nomeCampo('textoLembrete'), valor:it.textoLembrete || '', salvar:v => { if(it.dataLembrete) definirTextoLembrete(id, v); else it.textoLembrete = v; }},
         limpar: lembreteDe(id) ? {rotulo:'Cancelar lembrete', acao:() => removerLembrete(id)} : null,
         escolher:v => definirData(id, cid, v), recorrer:r => setRecorrencia(id, cid, r)});
     }
     case 'dataEntrega':
-      return abrirDatePicker(anchor, {titulo:nome, valor:it[cid], rec:recDe(it, cid), sel,
+      return abrirDatePicker(anchor, {titulo:nome, card:cardDoPicker(it), valor:it[cid], rec:recDe(it, cid), sel,
         dicaRec:'Ao concluir, o item reabre com a próxima data de entrega.',
         escolher:v => definirData(id, cid, v), recorrer:r => setRecorrencia(id, cid, r)});
   }
@@ -3330,7 +3333,7 @@ function abrirEditorCampo(anchor, id, cid){
   const val = (it.extras || {})[cid];
   if(def.tipo === 'selecao') return abrirMenu(anchor, [{titulo:def.nome}].concat(def.opcoes.map(o => ({id:'o-' + o, label:o, marcado:val === o, acao:() => alterarExtra(id, cid, o)})))
     .concat(['-', {id:'limpar', label:'Limpar', icone:'x', desabilitado: val == null, acao:() => alterarExtra(id, cid, null)}]), {sel});
-  if(def.tipo === 'data') return abrirDatePicker(anchor, {titulo:def.nome, valor:val, sel, escolher:v => alterarExtra(id, cid, v)});
+  if(def.tipo === 'data') return abrirDatePicker(anchor, {titulo:def.nome, card:cardDoPicker(it), valor:val, sel, escolher:v => alterarExtra(id, cid, v)});
   return popTexto(anchor, {titulo:def.nome, valor: val == null ? '' : String(val), numero:def.tipo === 'numero', sel,
     salvar:v => alterarExtra(id, cid, def.tipo === 'numero' ? (v === '' || isNaN(Number(v)) ? null : Number(v)) : v)});
 }
@@ -3367,6 +3370,8 @@ const MESES = ['janeiro','fevereiro','março','abril','maio','junho','julho','ag
  * o: {titulo, valor, escolher(v), rec, recorrer(r), dicaRec, sel, semLimpar (sem "Sem data"),
  *     proxima (mostra atalho da próxima ocorrência), texto:{rotulo, valor, salvar(v)}, limpar:{rotulo, acao()}}
  */
+/** Identifica o card que o seletor de data está alterando (tipo, ícone e nome). */
+const cardDoPicker = it => it ? {nome:it.titulo, icone: ehLembrete(it) ? 'bell' : it.tipo === 'projeto' ? 'folder' : 'checkSq'} : null;
 function abrirDatePicker(anchor, o){
   let mes = (o.valor || hojeISO()).slice(0,7);
   let foco = o.valor || hojeISO();
@@ -3417,7 +3422,8 @@ function abrirDatePicker(anchor, o){
     }
     const textoHTML = o.texto ? '<div class="dp-sec"><label class="flabel" for="dpTxt">' + esc(o.texto.rotulo) + '</label>' +
       '<textarea class="inp" id="dpTxt" rows="2" placeholder="Do que você quer se lembrar" autocapitalize="sentences">' + esc(textoAtual) + '</textarea></div>' : '';
-    el.innerHTML = '<div class="pop-t">' + esc(o.titulo) + '</div>' + proxHTML +
+    const cardHTML_ = o.card ? '<div class="dp-card" title="' + esc(o.card.nome) + '">' + ic(o.card.icone || 'checkSq',13) + '<span>' + esc(o.card.nome) + '</span></div>' : '';
+    el.innerHTML = '<div class="pop-t">' + esc(o.titulo) + '</div>' + cardHTML_ + proxHTML +
       '<div class="dp-at">' + atalhos.map(a => '<button type="button" data-dia="' + a[1] + '">' + a[0] + sub(a[1]) + '</button>').join('') +
         (podeLimpar ? '<button type="button" class="sem" data-sem-data' + (o.valor ? '' : ' disabled') + '>Sem data</button>' : '') + '</div>' +
       '<div class="dp-nav"><button type="button" class="icon-btn sm" data-nav="-1" aria-label="Mês anterior">' + ic('chevL',16) + '</button>' +
@@ -3475,7 +3481,7 @@ function abrirDatePicker(anchor, o){
 /** Reagendar lembrete: data (com atalho da próxima ocorrência), recorrência, texto e cancelar. */
 function abrirReagendar(anchor, f, sel){
   const o = getItem(f.origemId);
-  abrirDatePicker(anchor, {titulo:'Reagendar lembrete', valor:f.dataLembrete, rec:recDe(f, 'dataLembrete'), sel, proxima:true,
+  abrirDatePicker(anchor, {titulo:'Reagendar lembrete', card:cardDoPicker(o || f), valor:f.dataLembrete, rec:recDe(f, 'dataLembrete'), sel, proxima:true,
     dicaRec:'Com repetição, concluir o lembrete já agenda o próximo.',
     escolher:v => reagendarLembrete(f.id, v),
     recorrer:r => setRecorrencia(f.id, 'dataLembrete', r),
