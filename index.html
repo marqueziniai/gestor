@@ -1233,12 +1233,12 @@ function estruturaPadrao(){
 function prefsPadrao(){
   return {
     versao:4, tema:'auto', sidebarCompacta:false, sidebarExp:false, listaQuebra:true, larguras:{}, dicas:{swipe:false},
-    entrada:{aba:'triagem', tipos:[], categorias:[], dtIni:'', dtFim:'', ordem:'criacao-desc', agrupar:'nenhum', colapsados:[]},
-    hoje:{visao:'lista', agrupar:'faixa', periodo:'hoje-vencidos', custIni:'', custFim:'', datas:['lemb','entrega'], tipos:['projeto','tarefa','lemb'], categorias:[], ordem:'data-asc', manual:[], colapsados:[]},
-    projetos:{visao:'kanban', agrupar:'status', statusF:[], categorias:[], dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
-    tarefas:{visao:'lista', agrupar:'status', vinculo:'todas', lembF:'todas', statusF:[], categorias:[], projetosF:[], dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
+    entrada:{aba:'triagem', tipos:[], categorias:[], dtIni:'', dtFim:'', extrasF:[], ordem:'criacao-desc', agrupar:'nenhum', colapsados:[]},
+    hoje:{visao:'lista', agrupar:'faixa', periodo:'hoje-vencidos', custIni:'', custFim:'', datas:['lemb','entrega'], tipos:['projeto','tarefa','lemb'], categorias:[], extrasF:[], ordem:'data-asc', manual:[], colapsados:[]},
+    projetos:{visao:'kanban', agrupar:'status', statusF:[], categorias:[], extrasF:[], dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
+    tarefas:{visao:'lista', agrupar:'status', vinculo:'todas', lembF:'todas', statusF:[], categorias:[], projetosF:[], extrasF:[], dtIni:'', dtFim:'', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
     projeto:{visao:'kanban', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false},
-    categoria:{visao:'kanban', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false, statusF:[], dtIni:'', dtFim:''},
+    categoria:{visao:'kanban', ordem:'entrega-asc', manual:[], colapsados:[], concluidos:false, statusF:[], extrasF:[], dtIni:'', dtFim:''},
     mostrarVazios:false,
     menu:MENU.slice(), catsAbertas:[]
   };
@@ -1262,7 +1262,7 @@ const state = {
   ui:{
     rota:{view:'hoje', id:null, item:null, q:{}},
     busca:'', buscaConcl:'', feedFiltro:'tudo', addCol:null, editandoCmt:null, rascunhos:{},
-    recemConcluidos:new Set(), maisFerr:false, modoSel:false, sel:new Set(), estruturaAba:'status', maisCampos:false, focar:null,
+    recemConcluidos:new Set(), recemCriados:[], maisFerr:false, modoSel:false, sel:new Set(), estruturaAba:'status', maisCampos:false, focar:null,
     fixadosHoje:{},          // itens arrastados em Hoje nesta visita: id → campo de data alterado
     expandidos:new Set(),    // projetos com as tarefas abertas abaixo do card/linha
     animarChk:null           // id do item recém-concluído (anima o círculo depois do render)
@@ -1647,6 +1647,7 @@ function itensHoje(){
     if(!ativo(it) || !it.tipo || concluido(it)) return false;
     if(p.tipos.indexOf(tipoHoje(it)) === -1) return false;
     if(p.categorias.length && p.categorias.indexOf(it.categoriaId || 'sem') === -1) return false;
+    if(!passaExtras(it, 'hoje')) return false;
     return !!motivoHoje(it);
   });
 }
@@ -1664,7 +1665,13 @@ function ordenar(arr, ordem, ctx){
   const key = ordem.replace(/-(asc|desc)$/, '');
   const MAX = '9999-12-31';
   function val(it){
-    if(key.indexOf('x:') === 0){ const v = (it.extras||{})[key.slice(2)]; return v == null || v === '' ? '￿' : (typeof v === 'number' ? String(1e9 + v).padStart(14,'0') : normaliza(v)); }
+    if(key.indexOf('x:') === 0){
+      const d = campoDef(key.slice(2)), v = (it.extras||{})[key.slice(2)];
+      if(v == null || v === '') return '￿';
+      // seleção segue a ordem das opções (ex.: Alta, Média, Baixa); número em ordem numérica
+      if(d && d.tipo === 'selecao'){ const i = (d.opcoes || []).indexOf(v); return i === -1 ? '￾' : String(i).padStart(4,'0'); }
+      return typeof v === 'number' ? String(1e9 + v).padStart(14,'0') : normaliza(v);
+    }
     switch(key){
       case 'data': { const m = ctx && ctx.motivo ? ctx.motivo(it) : null; return m ? m.iso : MAX; }
       // lembrete não tem entrega: vale a data do lembrete (do que vence primeiro até o que tem mais prazo)
@@ -1684,6 +1691,7 @@ function ordenar(arr, ordem, ctx){
   }
   return arr.slice().sort(function(a,b){
     const va = val(a), vb = val(b);
+    if(key.indexOf('x:') === 0 && (va === '￿') !== (vb === '￿')) return va === '￿' ? 1 : -1;   // sem valor fica no fim nos dois sentidos
     if(va < vb) return -dir;
     if(va > vb) return dir;
     return normaliza(a.titulo).localeCompare(normaliza(b.titulo), 'pt-BR');
@@ -3573,6 +3581,8 @@ function larguraUtil(){
 /** O que o item criado por "+ Adicionar" herda: os filtros da tela e, por cima, o que a coluna/grupo representa. */
 function heranca(sec, col){
   const b = padroesDoContexto(sec);
+  const cx = sec === 'hoje' || sec === 'projetos' || sec === 'tarefas' ? campoDoAgrupar(sec) : null;
+  if(cx){ b.extras = Object.assign({}, b.extras, {[cx.id]: col === '__sem' ? null : col}); return b; }
   if(sec === 'projetos'){ if(statusPorId('projeto', col)) b.status = col; else if(getCat(col)) b.categoriaId = col; else if(col === 'sem') b.categoriaId = null; }
   else if(sec === 'projeto' || sec === 'categoria'){ if(statusPorId(b.tipo, col)) b.status = col; }
   else if(sec === 'entrada' && /^cat-/.test(col || '')){ const c = col.slice(4); b.categoriaId = getCat(c) ? c : null; }
@@ -3601,6 +3611,10 @@ function rascunhoHTML(sec, col, rotuloCol){
   if(b.status){ const s = statusPorId(b.tipo, b.status); chips.push('<span class="fc st" style="--c:' + esc(s.cor) + '"><span class="v">' + esc(s.nome) + '</span></span>'); }
   const cat = b.categoriaId || (b.projetoId && getItem(b.projetoId) ? getItem(b.projetoId).categoriaId : null);
   if(cat && getCat(cat)) chips.push('<span class="fc"><span class="dot" style="background:' + esc(getCat(cat).cor) + '"></span><span class="v">' + esc(nomeCat(cat)) + '</span></span>');
+  Object.keys(b.extras || {}).forEach(function(k){
+    const v = b.extras[k], d = campoDef(k);
+    if(temValor(v) && d) chips.push('<span class="fc"><span class="rot">' + esc(d.nome) + '</span><span class="v">' + esc(d.tipo === 'data' ? fmtCurta(v) : String(v)) + '</span></span>');
+  });
   ['dataEntrega','dataLembrete'].forEach(k => { if(b[k]) chips.push('<span class="fc">' + ic(k === 'dataLembrete' ? 'bell' : 'calendar',12) + '<span class="rot">' + esc(rotuloCurto(k)) + '</span><span class="v">' + esc(fmtCurta(b[k])) + '</span></span>'); });
   const tipo = (b.tipo === 'projeto' ? 'Projeto' : b.tipo === 'tarefa' ? 'Tarefa' : 'Item') + (b.secao === 'futuro' ? ' no Futuro' : b.secao === 'entrada' ? ' na Entrada' : '');
   return '<div class="card rascunho"><div class="c-meta"><span class="c-tipo"><span class="v">Novo · ' + tipo + '</span></span></div>' +
@@ -3611,6 +3625,12 @@ function rascunhoHTML(sec, col, rotuloCol){
 }
 function botaoAdicionar(sec, col, cls){
   return '<button type="button" class="' + (cls || 'kcol-add') + '" data-act="add-col" data-sec="' + sec + '" data-col="' + esc(col) + '">' + ic('plus',15) + 'Adicionar</button>';
+}
+/** Cards criados por "+ Adicionar" ficam no fim da coluna/grupo (onde foram criados) até sair da tela, em vez de pular para o topo pela ordenação. */
+function recemNoFim(its){
+  const rc = state.ui.recemCriados;
+  if(!rc || !rc.length) return its;
+  return its.filter(i => rc.indexOf(i.id) === -1).concat(rc.map(id => its.find(i => i.id === id)).filter(Boolean));
 }
 /** Seções em que cards e linhas da lista podem ser arrastados (para o menu lateral ou, no celular, para a barra de destinos). */
 const SECOES_ARRASTAVEIS = ['hoje','projetos','tarefas','projeto','categoria'];
@@ -3649,7 +3669,7 @@ function listaHTML(sec, conteudo, ctx){
   const arrasta = SECOES_ARRASTAVEIS.indexOf(sec) !== -1;
   if(!usarGrade){
     const card = it => cardHTML(it, {layout:lay, motivo: ctx.motivoFn ? ctx.motivoFn(it) : null, rodape:ctx.rodape, arrastavel:arrasta});
-    const bloco = (its, col, nome) => (its.length ? '<div class="cards">' + its.map(card).join('') + '</div>' : (addAberto(col) ? '' : '<p class="muted" style="padding:4px 6px">' + esc(ctx.vazioGrupo || 'Nada aqui') + '</p>')) + rodapeAdd(col, nome);
+    const bloco = (its, col, nome) => (its.length ? '<div class="cards">' + recemNoFim(its).map(card).join('') + '</div>' : (addAberto(col) ? '' : '<p class="muted" style="padding:4px 6px">' + esc(ctx.vazioGrupo || 'Nada aqui') + '</p>')) + rodapeAdd(col, nome);
     const corpo = grupos ? grupos.map(g => grupo(sec, g.chave, g.nome, bloco(g.itens, g.chave, g.nome), g.itens.length)).join('') : bloco(conteudo.itens, '__todos', 'lista');
     return '<div class="lista-m' + (quebra ? ' quebra' : '') + '">' + corpo + '</div>';
   }
@@ -3681,7 +3701,7 @@ function listaHTML(sec, conteudo, ctx){
     }
     return h;
   };
-  const bloco = (its, col, nome) => (its.length ? its.map(it => linha(it)).join('') : (addAberto(col) ? '' : '<p class="muted" style="padding:10px 12px">' + esc(ctx.vazioGrupo || 'Nada aqui') + '</p>')) + (rodapeAdd(col, nome) ? '<div style="padding:0 12px">' + rodapeAdd(col, nome) + '</div>' : '');
+  const bloco = (its, col, nome) => (its.length ? recemNoFim(its).map(it => linha(it)).join('') : (addAberto(col) ? '' : '<p class="muted" style="padding:10px 12px">' + esc(ctx.vazioGrupo || 'Nada aqui') + '</p>')) + (rodapeAdd(col, nome) ? '<div style="padding:0 12px">' + rodapeAdd(col, nome) + '</div>' : '');
   const corpo = grupos ? grupos.map(g => grupo(sec, g.chave, g.nome, bloco(g.itens, g.chave, g.nome), g.itens.length)).join('') : bloco(conteudo.itens, '__todos', 'lista');
   return '<div class="lista-wrap"><div class="lista' + (quebra ? ' quebra' : '') + '" style="--minw:' + minw + 'px;--gtc:' + gtc + '">' + head + corpo + '</div></div>';
 }
@@ -3697,7 +3717,7 @@ function grupo(sec, chave, titulo, corpo, n){
  */
 function kanbanHTML(sec, cols, ctx){
   const colunas = cols.map(function(c){
-    const cards = c.itens.map(it => cardHTML(it, {layout:'kanban', arrastavel:true, motivo: ctx.motivoFn ? ctx.motivoFn(it) : null})).join('');
+    const cards = recemNoFim(c.itens).map(it => cardHTML(it, {layout:'kanban', arrastavel:true, motivo: ctx.motivoFn ? ctx.motivoFn(it) : null})).join('');
     const head = '<div class="kcol-h">' + (c.cor ? '<span class="cdot" style="background:' + esc(c.cor) + '"></span>' : '') + '<span class="nm">' + esc(c.nome) + '</span>' +
         (c.foraPeriodo ? '<span class="fora-periodo" title="Faixa fora do período do filtro: só aparecem aqui os cards que você acabou de mover">fora do período</span>' : '') +
         '<span class="cnt">' + c.itens.length + '</span></div>';
@@ -3872,8 +3892,33 @@ const ORDENS = {
 /** Ordens da seção, com "Personalizada" quando já existe uma ordem arrastada no Foco. */
 function opcoesOrdem(sec){
   const l = (ORDENS[sec] || []).slice(), p = state.prefs[sec];
+  camposExtras(sec).forEach(function(c){
+    l.push(['x:' + c.id + '-asc', c.nome + (c.tipo === 'data' ? ' (mais próxima primeiro)' : c.tipo === 'numero' ? ' (menor primeiro)' : '')]);
+    if(c.tipo === 'data' || c.tipo === 'numero') l.push(['x:' + c.id + '-desc', c.nome + (c.tipo === 'data' ? ' (mais distante primeiro)' : ' (maior primeiro)')]);
+  });
   if(p && Array.isArray(p.manual) && (p.manual.length || p.ordem === 'manual')) l.push(['manual','Personalizada (arrastando os cards)']);
   return l;
+}
+/** Agrupamentos da seção, com os campos de seleção criados em Estrutura (antes de "Sem agrupamento"). */
+function opcoesAgrupar(sec){
+  const l = (AGRUPAR[sec] || []).slice();
+  if(!l.length) return l;
+  const fim = l[l.length - 1][0] === 'nenhum' ? l.pop() : null;
+  camposExtras(sec).filter(c => c.tipo === 'selecao').forEach(c => l.push(['x:' + c.id, c.nome]));
+  if(fim) l.push(fim);
+  return l;
+}
+/** Campo de seleção pelo qual a seção está agrupada (null se o agrupamento não é por campo, ou se o campo sumiu). */
+function campoDoAgrupar(sec){
+  const a = (state.prefs[sec] || {}).agrupar || '';
+  if(a.indexOf('x:') !== 0) return null;
+  return camposExtras(sec).find(c => c.tipo === 'selecao' && c.id === a.slice(2)) || null;
+}
+/** Grupos/colunas por um campo de seleção: uma por opção, na ordem definida, e "Sem …" no fim. */
+function gruposCampo(lista, c){
+  const ops = c.opcoes || [], val = i => (i.extras || {})[c.id];
+  return ops.map(o => ({chave:o, nome:o, itens:lista.filter(i => val(i) === o)}))
+    .concat([{chave:'__sem', nome:'Sem ' + c.nome.toLowerCase(), itens:lista.filter(i => ops.indexOf(val(i)) === -1)}]);
 }
 const AGRUPAR = {
   hoje:[['faixa','Faixa de data'],['categoria','Categoria'],['projeto','Projeto'],['tipo','Tipo'],['nenhum','Sem agrupamento']],
@@ -3888,7 +3933,7 @@ function rotuloOrdem(sec){
   const cid = ['titulo','status','categoriaId','projetoId','dataLembrete','dataEntrega','progresso','comentarios','tipo','ultimaAtualizacao'].find(c => chaveOrdem(c) === k) || (k.indexOf('x:') === 0 ? k.slice(2) : null);
   return cid ? nomeCampo(cid) + (/-desc$/.test(state.prefs[sec].ordem) ? ' (decrescente)' : '') : 'Personalizada';
 }
-function rotuloAgrupar(sec){ const a = (AGRUPAR[sec] || []).find(x => x[0] === state.prefs[sec].agrupar); return a ? a[1] : 'Status'; }
+function rotuloAgrupar(sec){ const a = opcoesAgrupar(sec).find(x => x[0] === state.prefs[sec].agrupar); return a ? a[1] : (opcoesAgrupar(sec)[0] || [0,'Status'])[1]; }
 
 function btnVisao(sec){
   const v = state.prefs[sec].visao;
@@ -3974,7 +4019,7 @@ function corpoOpcoes(sec){
   if(o.ordem !== false) h += '<div class="sect-t">Ordenar por</div><div class="opt-list" role="radiogroup" aria-label="Ordenar por">' +
     opcoesOrdem(sec).map(x => optRadio(x[1], p.ordem === x[0], 'data-act="set-ordem" data-sec="' + sec + '" data-v="' + x[0] + '"')).join('') + '</div>';
   if(o.agrupar && !foco) h += '<div class="sect-t">Agrupar por</div><div class="opt-list" role="radiogroup" aria-label="Agrupar por">' +
-    (AGRUPAR[sec] || []).map(x => optRadio(x[1], p.agrupar === x[0], 'data-act="set-agrupar" data-sec="' + sec + '" data-v="' + x[0] + '"')).join('') + '</div>';
+    opcoesAgrupar(sec).map(x => optRadio(x[1], p.agrupar === x[0], 'data-act="set-agrupar" data-sec="' + sec + '" data-v="' + esc(x[0]) + '"')).join('') + '</div>';
   h += '<div class="sect-t">Exibição</div>';
   if(o.agruparFuturo) h += sw('Agrupar por categoria', '', 'toggle-agrup-futuro', p.agrupar === 'categoria');
   h += sw('Quebrar linhas', 'Padrão: nada fica cortado', 'tog-quebra', state.prefs.listaQuebra);
@@ -4067,7 +4112,56 @@ function renderTopbar(){
    ========================================================================= */
 function contaFiltrosHoje(){
   const p = state.prefs.hoje;
-  return (p.periodo !== 'hoje-vencidos' ? 1 : 0) + (p.datas.length !== 2 ? 1 : 0) + (p.tipos.length !== 3 ? 1 : 0) + (p.categorias.length ? 1 : 0);
+  return (p.periodo !== 'hoje-vencidos' ? 1 : 0) + (p.datas.length !== 2 ? 1 : 0) + (p.tipos.length !== 3 ? 1 : 0) + (p.categorias.length ? 1 : 0) + extrasAtivos('hoje').length;
+}
+/* --- Campos criados em Estrutura (extras): também filtram, ordenam e agrupam --- */
+const TIPOS_SEC = {hoje:['projeto','tarefa'], entrada:['projeto','tarefa'], projetos:['projeto'], categoria:['projeto'], tarefas:['tarefa'], projeto:['tarefa']};
+/** Campos criados, ativos, que se aplicam ao que a seção mostra. */
+function camposExtras(sec){
+  const t = TIPOS_SEC[sec] || ['projeto','tarefa'];
+  return campos().filter(c => !c.sistema && !c.exibicao && c.ativo !== false && ['texto','numero','data','selecao'].indexOf(c.tipo) !== -1 && (c.aplica || []).some(x => t.indexOf(x) !== -1));
+}
+const filtroExtra = (p, cid) => ((p && p.extrasF) || []).find(e => e.c === cid) || null;
+function filtroExtraOuNovo(p, cid){ p.extrasF = p.extrasF || []; let e = filtroExtra(p, cid); if(!e){ e = {c:cid}; p.extrasF.push(e); } return e; }
+const temValor = v => v != null && v !== '';
+function extraAtivo(e){
+  const d = campoDef(e.c);
+  return !!d && d.ativo !== false && !!((e.vals && e.vals.length) || e.ini || e.fim || temValor(e.min) || temValor(e.max) || (e.txt && e.txt.trim()));
+}
+const extrasAtivos = sec => (((state.prefs[sec] || {}).extrasF) || []).filter(extraAtivo);
+function passaExtras(it, sec){
+  return extrasAtivos(sec).every(function(e){
+    const v = (it.extras || {})[e.c], vazio = !temValor(v);
+    if(e.vals && e.vals.length && e.vals.indexOf(vazio ? 'sem' : String(v)) === -1) return false;
+    if((e.ini || e.fim) && (vazio || (e.ini && v < e.ini) || (e.fim && v > e.fim))) return false;
+    if(temValor(e.min) && (vazio || Number(v) < Number(e.min))) return false;
+    if(temValor(e.max) && (vazio || Number(v) > Number(e.max))) return false;
+    if(e.txt && e.txt.trim() && normaliza(vazio ? '' : String(v)).indexOf(normaliza(e.txt.trim())) === -1) return false;
+    return true;
+  });
+}
+function textoFiltroExtra(e){
+  const d = campoDef(e.c), partes = [];
+  if(e.vals && e.vals.length) partes.push(e.vals.map(v => v === 'sem' ? 'Sem valor' : v).join(', '));
+  if(e.ini || e.fim) partes.push((e.ini ? fmtCurta(e.ini) : '…') + ' a ' + (e.fim ? fmtCurta(e.fim) : '…'));
+  if(temValor(e.min) || temValor(e.max)) partes.push((temValor(e.min) ? e.min : '…') + ' a ' + (temValor(e.max) ? e.max : '…'));
+  if(e.txt && e.txt.trim()) partes.push('contém “' + e.txt.trim() + '”');
+  return d.nome + ': ' + partes.join(' · ');
+}
+const chipsExtras = sec => extrasAtivos(sec).map(e => '<span class="chip">' + ic('sliders',12) + esc(textoFiltroExtra(e)) + chipX('rm-xf', 'data-sec="' + sec + '" data-c="' + esc(e.c) + '"', nomeCampo(e.c)) + '</span>').join('');
+/** Blocos do sheet de filtros para os campos criados: seleção (opções), data (de/até), número (mín./máx.) e texto (contém). */
+function blocoExtras(sec){
+  const p = state.prefs[sec];
+  return camposExtras(sec).map(function(c){
+    const e = filtroExtra(p, c.id) || {}, at = 'data-sec="' + sec + '" data-c="' + esc(c.id) + '"';
+    const h = '<div class="sect-t">' + esc(c.nome) + '</div>';
+    if(c.tipo === 'selecao') return h + '<div class="opt-list">' + (c.opcoes || []).concat(['sem']).map(o =>
+      optCheck(o === 'sem' ? 'Sem ' + c.nome.toLowerCase() : o, (e.vals || []).indexOf(o) !== -1, 'data-act="tog-xf" ' + at + ' data-v="' + esc(o) + '"')).join('') + '</div>';
+    const inp = (k, rot, tipo, val) => '<div class="field" style="flex:1"><label for="xf-' + sec + '-' + esc(c.id) + '-' + k + '">' + rot + '</label><input class="inp" type="' + tipo + '" id="xf-' + sec + '-' + esc(c.id) + '-' + k + '" data-act="set-xf" ' + at + ' data-k="' + k + '" value="' + esc(temValor(val) ? val : '') + '"' + (tipo === 'text' ? ' placeholder="Contém…" autocomplete="off"' : '') + '></div>';
+    if(c.tipo === 'data') return h + '<div style="display:flex;gap:8px">' + inp('ini','De','date',e.ini) + inp('fim','Até','date',e.fim) + '</div>';
+    if(c.tipo === 'numero') return h + '<div style="display:flex;gap:8px">' + inp('min','Mínimo','number',e.min) + inp('max','Máximo','number',e.max) + '</div>';
+    return h + '<div style="display:flex;gap:8px">' + inp('txt','Texto','text',e.txt) + '</div>';
+  }).join('');
 }
 /** Na triagem da Entrada os itens ainda não têm tipo: o filtro de tipo só vale no Futuro. */
 const tiposValem = sec => !(sec === 'entrada' && state.prefs.entrada.aba !== 'futuro');
@@ -4078,7 +4172,7 @@ function contaFiltros(sec){
   if(p.dtIni || p.dtFim) n++;
   if(sec === 'tarefas' && p.vinculo !== 'todas') n++;
   if(sec === 'tarefas' && p.lembF !== 'todas') n++;
-  return n;
+  return n + extrasAtivos(sec).length;
 }
 function chipX(acao, attrs, rot){ return '<button type="button" class="x" data-act="' + acao + '" ' + attrs + ' aria-label="Remover filtro ' + esc(rot) + '">' + ic('x',11) + '</button>'; }
 function chipsFiltrosHoje(){
@@ -4091,6 +4185,7 @@ function chipsFiltrosHoje(){
     const n = {projeto:'Projetos', tarefa:'Tarefas', lemb:'Lembretes'};
     out.push('<span class="chip">Tipo: ' + esc(p.tipos.map(t => n[t]).join(', ') || 'nenhum') + chipX('rm-filtro','data-sec="hoje" data-f="tipos"','tipo') + '</span>');
   }
+  out.push(chipsExtras('hoje'));
   out.push('<span class="chip">' + ic('sort',12) + 'Ordem: ' + esc(rotuloOrdem('hoje')) + '</span>');
   if(contaFiltrosHoje()) out.push('<button type="button" class="chip clickable" data-act="limpar-filtros" data-sec="hoje">' + ic('refresh',12) + 'Limpar filtros</button>');
   return out.join('');
@@ -4106,6 +4201,7 @@ function chipsFiltros(sec){
   });
   (p.projetosF || []).forEach(pid => out.push('<span class="chip">' + ic('folder',12) + esc(pid === 'sem' ? 'Sem projeto' : (nomeProjeto(pid) || '?')) + chipX('rm-arr','data-sec="' + sec + '" data-k="projetosF" data-v="' + esc(pid) + '"','projeto') + '</span>'));
   if(p.dtIni || p.dtFim) out.push('<span class="chip">' + ic('calendar',12) + esc((p.dtIni ? fmtCurta(p.dtIni) : '…') + ' a ' + (p.dtFim ? fmtCurta(p.dtFim) : '…')) + chipX('rm-filtro','data-sec="' + sec + '" data-f="intervalo"','intervalo') + '</span>');
+  out.push(chipsExtras(sec));
   if(sec === 'tarefas' && p.lembF !== 'todas') out.push('<span class="chip">' + ic('bell',12) + (p.lembF === 'lemb' ? 'Só lembretes' : 'Sem lembretes') + chipX('rm-filtro','data-sec="tarefas" data-f="lembF"','lembretes') + '</span>');
   if(contaFiltros(sec) - (sec === 'tarefas' && p.vinculo !== 'todas' ? 1 : 0) > 0) out.push('<button type="button" class="chip clickable" data-act="limpar-filtros" data-sec="' + sec + '">' + ic('refresh',12) + 'Limpar filtros</button>');
   return out.join('');
@@ -4151,7 +4247,7 @@ function corpoFiltros(sec){
       optCheck('Tarefas', p.tipos.indexOf('tarefa') !== -1, 'data-act="tog-arr" data-sec="hoje" data-k="tipos" data-v="tarefa"') +
       optCheck('Projetos', p.tipos.indexOf('projeto') !== -1, 'data-act="tog-arr" data-sec="hoje" data-k="tipos" data-v="projeto"') +
       optCheck('Lembretes', p.tipos.indexOf('lemb') !== -1, 'data-act="tog-arr" data-sec="hoje" data-k="tipos" data-v="lemb"') + '</div>';
-    return h + blocoCategorias('hoje');
+    return h + blocoCategorias('hoje') + blocoExtras('hoje');
   }
   if(sec === 'tarefas'){
     h += '<div class="sect-t">Vínculo com projeto</div><div class="opt-list" role="radiogroup">' +
@@ -4173,6 +4269,7 @@ function corpoFiltros(sec){
       projetos().filter(x => x.secao !== 'entrada').map(x => optCheck(x.titulo + (concluido(x) ? ' (concluído)' : ''), p.projetosF.indexOf(x.id) !== -1, 'data-act="tog-arr" data-sec="tarefas" data-k="projetosF" data-v="' + x.id + '"')).join('') + '</div>';
   }
   if(sec !== 'categoria') h += blocoCategorias(sec);
+  h += blocoExtras(sec);
   {
     h += '<div class="sect-t">Intervalo de datas</div><div style="display:flex;gap:8px">' +
       '<div class="field" style="flex:1"><label for="dI' + sec + '">De</label><input class="inp" type="date" id="dI' + sec + '" data-act="set-cust" data-sec="' + sec + '" data-k="dtIni" value="' + esc(p.dtIni) + '"></div>' +
@@ -4188,6 +4285,7 @@ function aplicaFiltros(arr, sec){
     if(p.statusF && p.statusF.length && p.statusF.indexOf(statusEfetivo(it)) === -1) return false;
     if(p.categorias && p.categorias.length && p.categorias.indexOf(it.categoriaId || 'sem') === -1) return false;
     if(p.projetosF && p.projetosF.length && p.projetosF.indexOf(it.projetoId || 'sem') === -1) return false;
+    if(!passaExtras(it, sec)) return false;
     if(sec === 'tarefas' && p.lembF === 'lemb' && !ehLembrete(it)) return false;
     if(sec === 'tarefas' && p.lembF === 'comuns' && ehLembrete(it)) return false;
     if(p.dtIni || p.dtFim){
@@ -4247,6 +4345,12 @@ function padroesDoContexto(sec){
       const tp = valorUnico(p.tipos); if(tp === 'tarefa' || tp === 'projeto') b.tipo = tp;
     }
   }
+  // campos criados: uma opção só (seleção) ou um intervalo (data) viram o valor do item novo
+  extrasAtivos(sec).forEach(function(e){
+    const d = campoDef(e.c);
+    const v = d.tipo === 'selecao' ? valorUnico(e.vals) : d.tipo === 'data' && (e.ini || e.fim) ? dataNoIntervalo(e.ini, e.fim) : undefined;
+    if(v){ b.extras = b.extras || {}; b.extras[e.c] = v; }
+  });
   return b;
 }
 /** Os padrões da tela para um tipo escolhido (null = Entrada, sem tipo). */
@@ -4268,7 +4372,7 @@ function sheetOrdem(sec){
 }
 function sheetAgrupar(sec){
   abrirSheet({titulo:'Agrupar por', autofoco:false, corpoFn:() => '<div class="opt-list" role="radiogroup" aria-label="Agrupar por">' +
-    (AGRUPAR[sec] || []).map(o => optRadio(o[1], state.prefs[sec].agrupar === o[0], 'data-act="set-agrupar" data-fechar="1" data-sec="' + sec + '" data-v="' + o[0] + '"')).join('') + '</div>' +
+    opcoesAgrupar(sec).map(o => optRadio(o[1], state.prefs[sec].agrupar === o[0], 'data-act="set-agrupar" data-fechar="1" data-sec="' + sec + '" data-v="' + esc(o[0]) + '"')).join('') + '</div>' +
     (sec === 'tarefas' ? '<p class="hint">' + ic('info',13) + '<span>No Kanban, as colunas seguem este agrupamento.</span></p>' : '<p class="hint">' + ic('info',13) + '<span>Vale para a Lista. O Kanban de Projetos usa sempre as colunas de status de projeto.</span></p>')});
 }
 /* =========================================================================
@@ -4367,12 +4471,12 @@ function viewHoje(){
     const feitos = items().filter(it => state.ui.recemConcluidos.has(it.id) && concluido(it) && ativo(it) && motivoHoje(it));
     return focoHTML('hoje', lista.concat(feitos), {faixaFn: it => faixaDe(motivoHoje(it).iso), placeholder:'Adicionar tarefa para hoje'});
   }
-  const ag = p.agrupar || 'faixa';
+  const ag = (p.agrupar || '').indexOf('x:') === 0 && !campoDoAgrupar('hoje') ? 'faixa' : p.agrupar || 'faixa';   // campo excluído: volta para a faixa
   const agK = p.visao === 'kanban' && ag === 'nenhum' ? 'faixa' : ag;   // o kanban sempre tem colunas
   if(agK === 'nenhum') return listaHTML('hoje', {itens:lista}, {motivoFn:motivoHoje, addFlat:true});
   const grupos = soColunasFiltradas('hoje', gruposHoje(lista, agK), agK);
   if(p.visao === 'kanban'){
-    const kind = {faixa:'faixa', categoria:'categoria', projeto:'projeto'}[agK] || '';
+    const kind = agK.indexOf('x:') === 0 ? agK : {faixa:'faixa', categoria:'categoria', projeto:'projeto'}[agK] || '';
     return (kind === 'faixa' ? '<p class="hint" style="margin:0 0 8px">' + ic('info',13) + '<span>Arraste um card para outra faixa para reagendar a data que o trouxe para cá. Cards movidos para fora do período continuam visíveis até você sair da tela.</span></p>' : '') +
       kanbanHTML('hoje', grupos, {dropKind:kind, motivoFn:motivoHoje, podeAdicionar: k => k !== 'vencidos'});
   }
@@ -4382,7 +4486,8 @@ function viewHoje(){
 /** Com filtro na mesma dimensão das colunas (status, categoria ou projeto), só as colunas filtradas aparecem. */
 function soColunasFiltradas(sec, grupos, dim){
   const p = state.prefs[sec] || {};
-  const sel = dim === 'status' ? p.statusF : dim === 'categoria' ? p.categorias : dim === 'projeto' ? p.projetosF : null;
+  const sel = dim === 'status' ? p.statusF : dim === 'categoria' ? p.categorias : dim === 'projeto' ? p.projetosF
+    : dim && dim.indexOf('x:') === 0 ? ((filtroExtra(p, dim.slice(2)) || {}).vals || []).map(v => v === 'sem' ? '__sem' : v) : null;
   return sel && sel.length ? grupos.filter(g => sel.indexOf(g.chave) !== -1) : grupos;
 }
 function gruposCategoria(lista){
@@ -4391,6 +4496,7 @@ function gruposCategoria(lista){
 }
 /** Grupos de Hoje: faixa de data (padrão), categoria, projeto (o projeto e as tarefas dele juntos) ou tipo. */
 function gruposHoje(lista, ag){
+  if(ag.indexOf('x:') === 0) return gruposCampo(lista, campoDef(ag.slice(2)));
   if(ag === 'categoria') return gruposCategoria(lista);
   if(ag === 'projeto'){
     const chave = i => i.tipo === 'projeto' ? i.id : (i.projetoId || 'sem'), ids = [];
@@ -4410,12 +4516,13 @@ function viewProjetos(){
     (contaFiltros('projetos') ? btnLimparFiltros('projetos') : '') + (state.ui.busca ? btnLimparBusca() : ''));
   if(p.visao === 'foco') return focoHTML('projetos', lista, {placeholder:'Adicionar projeto', vazio:'Nenhum projeto aberto.'});
   // agrupar: status (colunas de status de PROJETO) ou categoria; "sem agrupamento" só na lista
-  const ag = p.agrupar === 'categoria' ? 'categoria' : p.agrupar === 'nenhum' && p.visao !== 'kanban' ? 'nenhum' : 'status';
+  const cx = campoDoAgrupar('projetos');
+  const ag = cx ? p.agrupar : p.agrupar === 'categoria' ? 'categoria' : p.agrupar === 'nenhum' && p.visao !== 'kanban' ? 'nenhum' : 'status';
   if(ag === 'nenhum') return listaHTML('projetos', {itens:lista}, {addFlat:true});
   const grupos = soColunasFiltradas('projetos', ag === 'status'
     ? listaStatus('projeto').map(s => ({chave:s.id, nome:s.nome, cor:s.cor, itens:lista.filter(i => i.status === s.id)}))
-    : gruposCategoria(lista), ag);
-  if(p.visao === 'kanban') return kanbanHTML('projetos', grupos, ag === 'status' ? {dropKind:'status-projeto', statusTipo:'projeto'} : {dropKind:'categoria'});
+    : cx ? gruposCampo(lista, cx) : gruposCategoria(lista), ag);
+  if(p.visao === 'kanban') return kanbanHTML('projetos', grupos, ag === 'status' ? {dropKind:'status-projeto', statusTipo:'projeto'} : {dropKind: cx ? ag : 'categoria'});
   return listaHTML('projetos', {grupos}, {podeAdicionar: () => true});
 }
 
@@ -4515,7 +4622,8 @@ function viewTarefas(){
   if(p.vinculo === 'com') base = base.filter(i => !!i.projetoId);
   if(p.vinculo === 'sem') base = base.filter(i => !i.projetoId);
   const lista = ordenar(filtraConcluidos(filtraBusca(aplicaFiltros(base, 'tarefas')), 'tarefas'), p.ordem, ctxOrdem('tarefas'));
-  const ag = p.agrupar === 'nenhum' && p.visao === 'kanban' ? 'status' : p.agrupar;
+  const cx = campoDoAgrupar('tarefas');
+  const ag = (p.agrupar === 'nenhum' && p.visao === 'kanban') || ((p.agrupar || '').indexOf('x:') === 0 && !cx) ? 'status' : p.agrupar;
   if(!lista.length) avisarVazio(contaFiltros('tarefas') || state.ui.busca.trim().length >= 2 ? 'Nenhuma tarefa com esses filtros.' + ADICIONE_ABAIXO : 'Nenhuma tarefa aberta. Crie uma ou faça a triagem da Entrada.',
     (contaFiltros('tarefas') ? btnLimparFiltros('tarefas') : '') + (state.ui.busca ? btnLimparBusca() : ''));
   if(p.visao === 'foco') return focoHTML('tarefas', lista, {placeholder:'Adicionar tarefa'});
@@ -4534,6 +4642,9 @@ function viewTarefas(){
   }else if(ag === 'faixa'){
     grupos = FAIXAS.map(f => ({chave:f[0], nome:f[1], itens:lista.filter(i => faixaItem(i) === f[0])})).concat([{chave:'semdata', nome:'Sem data', itens:lista.filter(i => !faixaItem(i))}]);
     ctxK = {dropKind:'faixa', podeAdicionar: k => k !== 'vencidos'};
+  }else if(cx){
+    grupos = gruposCampo(lista, cx);
+    ctxK = {dropKind:ag};
   }else{
     // por status: sempre as colunas de status de TAREFA (lembretes, que não têm status, numa coluna própria)
     grupos = gruposStatusTarefa(lista);
@@ -5007,7 +5118,10 @@ function sheetCaptura(tipoInicial){
   const montar = function(){
     const pad = padroesPara(tipo, sec), ant = r;
     r = novoRascunho(tipo, ant);
-    camposFormulario(tipo).forEach(function(c){ if(c.sistema && pad[c.id] !== undefined && (r[c.id] == null || r[c.id] === '') && !(ant && c.id in ant)) r[c.id] = pad[c.id]; });
+    camposFormulario(tipo).forEach(function(c){
+      if(c.sistema && pad[c.id] !== undefined && (r[c.id] == null || r[c.id] === '') && !(ant && c.id in ant)) r[c.id] = pad[c.id];
+      if(!c.sistema && pad.extras && temValor(pad.extras[c.id]) && !temValor(r.extras[c.id]) && !(ant && c.id in ant.extras)) r.extras[c.id] = pad.extras[c.id];
+    });
     if(tipo && pad.status) r.status = pad.status;
   };
   montar();
@@ -5020,6 +5134,7 @@ function sheetCaptura(tipoInicial){
     ['dataEntrega','dataLembrete'].forEach(k => { if(pad[k] && r[k] === pad[k]) partes.push(rotuloCurto(k) + ' ' + fmtRelativa(pad[k])); });
     if(pad.projetoId && r.projetoId === pad.projetoId) partes.push(nomeProjeto(pad.projetoId));
     if(pad.status && r.status === pad.status){ const st = statusPorId(tipo, pad.status); if(st) partes.push(st.nome); }
+    Object.keys(pad.extras || {}).forEach(k => { const d = campoDef(k); if(d && r.extras[k] === pad.extras[k]) partes.push(d.nome + ' ' + (d.tipo === 'data' ? fmtCurta(pad.extras[k]) : pad.extras[k])); });
     return partes.length ? '<p class="hint" style="margin:8px 0 0">' + ic('filter',13) + '<span>Pelos filtros da tela: ' + esc(partes.join(' · ')) + '. Ajuste em “Mais detalhes”.</span></p>' : '';
   };
   const dicaTipo = () => noFuturo() ? 'Todos os campos são opcionais. O item vai para o Futuro (aba da Entrada).' : tipo ? 'Todos os campos são opcionais. ' + (tipo === 'projeto' ? 'O projeto vai para Projetos.' : 'A tarefa vai para Tarefas' + (r.projetoId ? ', dentro do projeto.' : '.'))
@@ -5064,7 +5179,8 @@ function sheetCaptura(tipoInicial){
       const salvar = function(){
         const t = $('#capTitulo', el);
         if(!t.value.trim()){ t.focus(); toast('Digite um título'); return; }
-        const base = Object.assign(padroesPara(tipo, sec), {titulo:t.value.trim(), extras:Object.assign({}, r.extras), recorrencia:Object.assign({}, r.recorrencia)});
+        const pad = padroesPara(tipo, sec);
+        const base = Object.assign(pad, {titulo:t.value.trim(), extras:Object.assign({}, pad.extras, r.extras), recorrencia:Object.assign({}, r.recorrencia)});
         camposFormulario(tipo).forEach(c => { if(c.sistema) base[c.id] = c.tipo === 'textoLongo' ? String(r[c.id] || '').trim() : (r[c.id] || null); });
         if(tipo) base.status = r.status;
         fecharSheet(true);
@@ -5507,6 +5623,10 @@ function aplicarDrop(kind, col, id){
   }else if(kind === 'cat-destino'){
     mudarCategoria(id, col === 'sem' ? null : col, {confirmar:true});
     return;
+  }else if(kind.indexOf('x:') === 0){
+    const cid = kind.slice(2), def = campoDef(cid);
+    if(!def || !campoAplica(def, it)){ toast('“' + (def ? def.nome : 'Campo') + '” não se aplica a este item'); return; }
+    alterarExtra(id, cid, col === '__sem' ? null : col);
   }else if(kind === 'converter'){
     if(!it.tipo || ehLembrete(it)){ toast(ehLembrete(it) ? 'Lembretes não viram projeto nem tarefa' : 'Faça a triagem do item primeiro'); return; }
     if(it.tipo === col){ toast('“' + it.titulo + '” já é ' + (col === 'projeto' ? 'um projeto' : 'uma tarefa')); return; }
@@ -5616,7 +5736,22 @@ function loteExcluir(){
   });
 }
 /** Arrastar um card selecionado leva todos os selecionados. */
+/** Seleção múltipla solta numa coluna de campo criado: grava o valor em todos (um único "Desfazer"). */
+function loteExtra(cid, v){
+  const def = campoDef(cid); if(!def) return;
+  const snap = snapshot(); let n = 0;
+  selecionados().forEach(function(i){
+    if(!campoAplica(def, i) || ((i.extras || {})[cid] || null) === v) return;
+    i.extras = i.extras || {};
+    const de = i.extras[cid];
+    i.extras[cid] = v;
+    registrar(i, {icone:'edit', rotulo:def.nome, de: temValor(de) ? String(de) : '—', para: temValor(v) ? String(v) : '—'});
+    n++;
+  });
+  loteFim(snap, nItens(n) + ': ' + def.nome + ' → ' + (temValor(v) ? v : 'vazio'));
+}
 function aplicarDropLote(kind, col){
+  if(kind.indexOf('x:') === 0) return loteExtra(kind.slice(2), col === '__sem' ? null : col);
   if(kind === 'categoria' || kind === 'cat-destino') return loteCategoria(col === 'sem' ? null : col);
   if(kind === 'projeto') return loteProjeto(col === 'sem' ? null : col);
   if(kind === 'converter'){ toast('Converta um item de cada vez'); return; }
@@ -5666,6 +5801,7 @@ function criarNaColuna(sec, col, titulo){
   const novo = criarItem(base, {semRender:true});
   if(concluido(novo)) state.ui.recemConcluidos.add(novo.id);
   fixarEmHoje(sec, novo);
+  state.ui.recemCriados.push(novo.id);     // fica no fim da coluna, logo acima do rascunho, até sair da tela
   state.ui.addCol = {sec, col};            // mantém o rascunho aberto para criar o próximo
   render();
   toast('“' + novo.titulo + '” criado', () => { removerItens([novo.id]); persistir(); render(); });
@@ -5765,7 +5901,7 @@ function sheetMoverPara(id){
 }
 function limparFiltros(sec){
   const novo = prefsPadrao()[sec], p = state.prefs[sec];
-  ['periodo','custIni','custFim','datas','tipos','categorias','statusF','projetosF','dtIni','dtFim','lembF'].forEach(k => { if(k in novo) p[k] = Array.isArray(novo[k]) ? novo[k].slice() : novo[k]; });
+  ['periodo','custIni','custFim','datas','tipos','categorias','statusF','projetosF','extrasF','dtIni','dtFim','lembF'].forEach(k => { if(k in novo) p[k] = Array.isArray(novo[k]) ? novo[k].slice() : novo[k]; });
   persistirPrefs(); render();
 }
 function toggleArr(arr, v){ const i = arr.indexOf(v); if(i === -1) arr.push(v); else arr.splice(i, 1); }
@@ -5871,6 +6007,8 @@ const ACOES = {
   'set-vinculo': d => { state.prefs.tarefas.vinculo = d.v; persistirPrefs(); render(); },
   'set-lembf': d => { state.prefs.tarefas.lembF = d.v; persistirPrefs(); render(); },
   'tog-arr': d => { toggleArr(state.prefs[d.sec][d.k], d.v); persistirPrefs(); render(); },
+  'tog-xf': d => { const e = filtroExtraOuNovo(state.prefs[d.sec], d.c); e.vals = e.vals || []; toggleArr(e.vals, d.v); persistirPrefs(); render(); },
+  'rm-xf': d => { const p = state.prefs[d.sec]; p.extrasF = (p.extrasF || []).filter(e => e.c !== d.c); persistirPrefs(); render(); },
   'rm-arr': d => { const a = state.prefs[d.sec][d.k], i = a.indexOf(d.v); if(i !== -1) a.splice(i, 1); persistirPrefs(); render(); },
   'rm-filtro': d => {
     const p = state.prefs[d.sec], pad = prefsPadrao()[d.sec];
@@ -6051,6 +6189,7 @@ document.addEventListener('change', function(e){
   if(el.closest('#popRoot')) return;
   switch(d.act){
     case 'set-cust': state.prefs[d.sec][d.k] = el.value; persistirPrefs(); render(); return;
+    case 'set-xf': { const e = filtroExtraOuNovo(state.prefs[d.sec], d.c); e[d.k] = el.value; persistirPrefs(); render(); return; }
     case 'cat-cor': { const c = getCat(d.id); if(c){ c.cor = el.value; persistir(); render(); } return; }
     case 'cat-nome': { const c = getCat(d.id); const v = el.value.trim(); if(c && v && v !== c.nome){ c.nome = v; persistir(); render(); toast('Categoria renomeada'); } else if(c) el.value = c.nome; return; }
     case 'status-cor': corStatus(d.tipo, d.sid, el.value); return;
@@ -6741,10 +6880,21 @@ function renderView(){
   const vp = $('#view');
   const kb0 = $('.kanban', vp), kl = kb0 ? kb0.scrollLeft : 0;
   const lw0 = $('.lista-wrap', vp), ll = lw0 ? lw0.scrollLeft : 0;
+  // cada coluna do kanban tem rolagem própria no desktop: guarda e devolve depois de redesenhar
+  const chaveCol = c => (c.dataset.dropKind || '') + '|' + (c.dataset.dropCol || '');
+  const rolCols = {};
+  $$('.kcol', vp).forEach(function(c){ const b = $('.kcol-body', c); if(b && b.scrollTop) rolCols[chaveCol(c)] = b.scrollTop; });
   vp.innerHTML = viewHTML();
+  $$('.kcol', vp).forEach(function(c){ const b = $('.kcol-body', c), y = rolCols[chaveCol(c)]; if(b && y) b.scrollTop = y; });
   $$('.kanban', vp).forEach(function(kb, i){ if(i === 0) kb.scrollLeft = kl; ligaDots(kb); });   // a página da categoria pode ter dois quadros
   const lw = $('.lista-wrap', vp); if(lw) lw.scrollLeft = ll;
-  const inp = $('#addColInput'); if(inp) inp.focus({preventScroll:true});
+  const inp = $('#addColInput');
+  if(inp){
+    inp.focus({preventScroll:true});
+    // o rascunho (e o card recém-criado logo acima) continua à vista dentro da coluna
+    const kb = inp.closest('.kcol-body'), rc = inp.closest('.card');
+    if(kb && rc){ const br = kb.getBoundingClientRect(), rr = rc.getBoundingClientRect(); if(rr.bottom > br.bottom) kb.scrollTop += rr.bottom - br.bottom + 8; }
+  }
   $$('textarea.inp-title, #view [data-composer]').forEach(autoTam);
   marcarTruncados(vp);
 }
@@ -6784,7 +6934,7 @@ function aoMudarHash(){
     // a barra superior encolhida muda a altura da página: guarda e devolve os dois juntos
     rolagemPorTela[chaveTela(antes)] = {y:window.scrollY, recolhida:$('#topbar').classList.contains('recolhida')};
     state.ui.modoSel = false; state.ui.sel.clear();
-    state.ui.recemConcluidos.clear(); state.ui.fixadosHoje = {}; state.ui.addCol = null;
+    state.ui.recemConcluidos.clear(); state.ui.recemCriados = []; state.ui.fixadosHoje = {}; state.ui.addCol = null;
     $('#topbar').classList.toggle('recolhida', !!(guardada && guardada.recolhida));
     if(state.ui.rota.view !== 'concluidos') state.ui.buscaConcl = '';
   }
