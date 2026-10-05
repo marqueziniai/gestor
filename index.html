@@ -582,7 +582,8 @@ html{-webkit-tap-highlight-color:transparent}
 .tb-cats::-webkit-scrollbar{display:none}
 .tb-cats .chip{flex:none}
 .fc.sem-valor{color:var(--text-3);border-style:dashed;background:transparent}
-.cat-tarefas{margin-top:24px}
+.cat-tarefas{margin-top:28px}
+.cat-sec-t svg{color:var(--text-3)}
 .cat-sec-t{font-size:15px;font-weight:670;margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .cat-sec-t .cnt{font-size:12px;color:var(--text-3);font-weight:600}   /* o + não cobre os destinos durante o arraste */
 .lrow[data-drag-id]{-webkit-user-select:none;user-select:none}
@@ -3614,8 +3615,9 @@ function focoHTML(sec, itens, o){
   const abertos = itens.filter(i => !concluido(i)), feitos = itens.filter(concluido);
   const blocos = FAIXAS.concat([['semdata','Sem data']]).map(f => ({chave:f[0], nome:f[1], itens:abertos.filter(i => faixa(i) === f[0])})).filter(g => g.itens.length);
   const lista = its => '<div class="foco-lista" role="list" data-foco-sec="' + sec + '">' + its.map(it => linhaFoco(it, {semProjeto:o.semProjeto, arrastavel:true})).join('') + '</div>';
-  const add = o.semAdicionar ? '' : '<div class="foco-add"><span class="mais" aria-hidden="true">' + ic('plus', 18) + '</span><label class="sr-only" for="focoAdd">' + esc(o.placeholder || 'Adicionar tarefa') + '</label>' +
-    '<input id="focoAdd" data-sec="' + sec + '" placeholder="' + esc(o.placeholder || 'Adicionar tarefa') + '" autocomplete="off" enterkeyhint="done" autocapitalize="sentences"></div>';
+  const addId = o.addId || 'focoAdd';
+  const add = o.semAdicionar ? '' : '<div class="foco-add"><span class="mais" aria-hidden="true">' + ic('plus', 18) + '</span><label class="sr-only" for="' + addId + '">' + esc(o.placeholder || 'Adicionar tarefa') + '</label>' +
+    '<input id="' + addId + '" data-sec="' + sec + '" placeholder="' + esc(o.placeholder || 'Adicionar tarefa') + '" autocomplete="off" enterkeyhint="done" autocapitalize="sentences"></div>';
   const manual = (state.prefs[sec] || {}).ordem === 'manual';
   const ordemInfo = abertos.length > 1 ? '<p class="foco-ordem">' + ic(manual ? 'grip' : 'info', 13) +
     (manual ? '<span>Ordem personalizada.</span><button type="button" class="btn sm ghost" data-act="sheet-ordem" data-sec="' + sec + '">Alterar ordem</button>'
@@ -3652,7 +3654,7 @@ function heranca(sec, col){
   const cx = sec === 'hoje' || sec === 'projetos' || sec === 'tarefas' ? campoDoAgrupar(sec) : null;
   if(cx){ b.extras = Object.assign({}, b.extras, {[cx.id]: col === '__sem' ? null : col}); return b; }
   if(sec === 'projetos'){ if(statusPorId('projeto', col)) b.status = col; else if(getCat(col)) b.categoriaId = col; else if(col === 'sem') b.categoriaId = null; }
-  else if(sec === 'projeto' || sec === 'categoria'){ if(statusPorId(b.tipo, col)) b.status = col; }
+  else if(sec === 'projeto' || sec === 'categoria' || sec === 'categoria-t'){ if(statusPorId(b.tipo, col)) b.status = col; }
   else if(sec === 'entrada' && /^cat-/.test(col || '')){ const c = col.slice(4); b.categoriaId = getCat(c) ? c : null; }
   else if(sec === 'tarefas'){
     // em Tarefas, a entrega padrão é hoje (ou o dia do intervalo filtrado); no agrupamento por faixa, o primeiro dia da faixa; em "Sem data", nenhuma
@@ -3701,7 +3703,7 @@ function recemNoFim(its){
   return its.filter(i => rc.indexOf(i.id) === -1).concat(rc.map(id => its.find(i => i.id === id)).filter(Boolean));
 }
 /** Seções em que cards e linhas da lista podem ser arrastados (para o menu lateral ou, no celular, para a barra de destinos). */
-const SECOES_ARRASTAVEIS = ['hoje','projetos','tarefas','projeto','categoria'];
+const SECOES_ARRASTAVEIS = ['hoje','projetos','tarefas','projeto','categoria','categoria-t'];
 /**
  * Lista responsiva. Grade de colunas no desktop quando cabe; senão (ou no mobile), lista de cards — sem rolagem lateral.
  * conteudo: {itens} ou {grupos:[{chave, nome, itens, sempre}]}. ctx: {motivoFn, acaoLinha, rodape, vazioGrupo, podeAdicionar(chave), addFlat}
@@ -4386,7 +4388,7 @@ function secDaTela(){
 /** O que um item criado nesta seção herda dos filtros ativos: {tipo, secao, categoriaId, dataEntrega/dataLembrete, status, projetoId}. */
 function padroesDoContexto(sec){
   const r = state.ui.rota, p = state.prefs[sec] || {}, b = {};
-  const cat = sec === 'categoria' ? (r.id === 'sem' ? null : r.id) : valorUnico(p.categorias);
+  const cat = sec === 'categoria' || sec === 'categoria-t' ? (r.id === 'sem' ? null : r.id) : valorUnico(p.categorias);
   if(cat === null || (cat && getCat(cat))) b.categoriaId = cat;
   if(sec === 'hoje'){
     const iv = intervaloPeriodo();
@@ -4399,6 +4401,10 @@ function padroesDoContexto(sec){
     const st = statusDoFiltro(p, 'tarefa'); if(st) b.status = st;
     const pj = valorUnico(p.projetosF), proj = pj ? getItem(pj) : null;
     if(proj && !concluido(proj)) b.projetoId = proj.id;
+  }else if(sec === 'categoria-t'){
+    // tarefa solta na categoria: sem projeto, entrega hoje (ou o dia do intervalo filtrado)
+    const pc = state.prefs.categoria;
+    Object.assign(b, {tipo:'tarefa', secao:'tarefas', dataEntrega:dataNoIntervalo(pc.dtIni, pc.dtFim)});
   }else if(sec === 'projetos' || sec === 'categoria'){
     Object.assign(b, {tipo:'projeto', secao:'projetos'});
     const st = statusDoFiltro(p, 'projeto'); if(st) b.status = st;
@@ -4721,14 +4727,13 @@ function viewCategoria(cid){
   else if(p.visao === 'kanban') corpo = kanbanHTML('categoria', soColunasFiltradas('categoria', listaStatus('projeto').map(s => ({chave:s.id, nome:s.nome, cor:s.cor, itens:lista.filter(i => i.status === s.id)})), 'status'), {dropKind:'status-projeto', statusTipo:'projeto'});
   else corpo = listaHTML('categoria', {itens:lista}, {addFlat:true});
   // tarefas sem projeto: seção própria, na mesma visão e com os mesmos filtros de data
-  let tarefas = '';
-  if(soltas.length){
-    const conteudo = p.visao === 'foco' ? focoHTML('categoria', soltas, {semAdicionar:true})
-      : p.visao === 'kanban' ? kanbanHTML('categoria', gruposStatusTarefa(soltas), {dropKind:'status-tarefa', statusTipo:'tarefa', semAdicionar:true, semConc:true})
-      : listaHTML('categoria', {itens:soltas}, {});
-    tarefas = '<section class="cat-tarefas" aria-label="Tarefas sem projeto"><h2 class="cat-sec-t">Tarefas sem projeto <span class="cnt">' + soltas.length + '</span></h2>' + conteudo + '</section>';
-  }
-  return corpo + tarefas;
+  // sempre visível (mesmo vazia) e com "+ Adicionar", para criar tarefas direto na categoria, fora de projetos
+  const conteudo = p.visao === 'foco' ? focoHTML('categoria-t', soltas, {placeholder:'Adicionar tarefa sem projeto', addId:'focoAddT', vazio:'Nenhuma tarefa sem projeto nesta categoria.'})
+    : p.visao === 'kanban' ? kanbanHTML('categoria-t', gruposStatusTarefa(soltas), {dropKind:'status-tarefa', statusTipo:'tarefa', semConc:true})
+    : listaHTML('categoria-t', {itens:soltas}, {addFlat:true});
+  const tarefas = '<section class="cat-tarefas" aria-label="Tarefas sem projeto"><h2 class="cat-sec-t">' + ic('checkSq',16) + 'Tarefas sem projeto <span class="cnt">' + soltas.length + '</span></h2>' + conteudo + '</section>';
+  const projetosSec = '<section class="cat-projetos" aria-label="Projetos"><h2 class="cat-sec-t">' + ic('folder',16) + 'Projetos <span class="cnt">' + lista.length + '</span></h2>' + corpo + '</section>';
+  return projetosSec + tarefas;
 }
 
 /* ---------- PÁGINA DO PROJETO ---------- */
@@ -6010,7 +6015,7 @@ function criarNoFoco(sec, titulo){
   if(!base.tipo) Object.assign(base, {tipo:'tarefa', secao:'tarefas'});
   const novo = criarItem(base, {semRender:true});
   fixarEmHoje(sec, novo);
-  state.ui.focar = '#focoAdd';
+  state.ui.focar = sec === 'categoria-t' ? '#focoAddT' : '#focoAdd';
   render();
   toast('“' + novo.titulo + '” adicionado' + (base.dataEntrega === hojeISO() ? ' para hoje' : ''), () => { removerItens([novo.id]); persistir(); render(); });
 }
@@ -6459,7 +6464,7 @@ document.addEventListener('keydown', function(e){
   }
   if(e.key === 'Enter' && el && !e.shiftKey){
     if(el.id === 'addColInput'){ e.preventDefault(); criarNaColuna(el.dataset.sec, el.dataset.col, el.value); return; }
-    if(el.id === 'focoAdd'){ e.preventDefault(); criarNoFoco(el.dataset.sec, el.value); return; }
+    if(el.id === 'focoAdd' || el.id === 'focoAddT'){ e.preventDefault(); criarNoFoco(el.dataset.sec, el.value); return; }
     if(el.dataset.act === 'status-add-in'){ e.preventDefault(); state.ui.focar = '[data-act="status-add-in"][data-tipo="' + el.dataset.tipo + '"]'; adicionarStatus(el.dataset.tipo, el.value); return; }
     if(el.dataset.act === 'sub-add-in'){ e.preventDefault(); criarSubtarefa(el.dataset.pid, el.value); return; }
     if(el.dataset.act === 'chk-add-in'){ e.preventDefault(); chkAdicionar(el.dataset.id, el.value); return; }
