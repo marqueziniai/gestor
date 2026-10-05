@@ -163,16 +163,26 @@ svg{display:block;flex:none}
 .tb-search .si{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text-3);pointer-events:none}
 .tb-search .sx{position:absolute;right:4px;top:50%;transform:translateY(-50%);color:var(--text-3);width:30px;height:30px;display:grid;place-items:center;border-radius:6px}
 .busca-mob{display:inline-grid}
-@media (min-width:1024px){.busca-mob{display:none}}
+@media (min-width:1024px){.tb-main .busca-mob{display:none}}
 /* no celular a linha de ferramentas tem só a visão e "Filtros (n)" — nada escondido à direita */
 .tb-tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center;padding:8px 0 10px}
-.tb-chips{display:flex;gap:6px;flex-wrap:wrap;padding-bottom:10px}
+.tb-chips{display:flex;gap:6px;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:thin;padding-bottom:10px;align-items:center}
+.tb-chips>*{flex:none}
+/* barra de ferramentas: [visão] | [filtros, ordem, agrupamento] ··· [concluídos, selecionar, exibição] */
+.tb-div{width:1px;height:22px;background:var(--border);margin:0 3px;flex:none}
+.tb-fim{margin-left:auto}
+.tb-val{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+@media (max-width:1199px){.tb-tools .tb-val{max-width:96px}}
+.tb-novo{flex:none}
+/* visão: só a ativa mostra o nome; as outras ficam como ícone (com dica) */
+.seg.visao button:not(.on) .rot-v{display:none !important}
 /* ao rolar para baixo no celular, ferramentas e chips recolhem; voltam ao rolar para cima */
 .tb-extra{display:grid;grid-template-rows:1fr;transition:grid-template-rows 200ms ease,opacity 200ms ease}
 .tb-extra>div{min-height:0;overflow:hidden}
 @media (max-width:767px){.topbar.recolhida .tb-extra{grid-template-rows:0fr;opacity:0}}
 .tb-tools .seg .rot-v{display:inline}
-@media (max-width:399px){.tb-tools .seg .rot-v{display:none}.tb-tools .seg button{padding:0 12px}}
+@media (max-width:399px){.tb-tools .seg .rot-v{display:none}.tb-tools .seg button{padding:0 10px}}
+@media (max-width:767px){.tb-tools{gap:5px}.tb-tools .btn.icon-only{padding-left:8px;padding-right:8px}}
 
 /* ---- Botões e chips ---- */
 .btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 11px;border-radius:var(--r-md);border:1px solid var(--border);background:var(--surface);color:var(--text-2);font-size:13.5px;font-weight:550;white-space:nowrap;transition:background var(--t),border-color var(--t),color var(--t);flex:none}
@@ -565,7 +575,7 @@ html{-webkit-tap-highlight-color:transparent}
   input,textarea,select,[contenteditable="true"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 }
 /* atalho de categorias abaixo da barra */
-.tb-cats{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding:0 0 8px}
+.tb-cats{display:contents}
 .tb-cats::-webkit-scrollbar{display:none}
 .tb-cats .chip{flex:none}
 .fc.sem-valor{color:var(--text-3);border-style:dashed;background:transparent}
@@ -3989,8 +3999,8 @@ function rotuloAgrupar(sec){ const a = opcoesAgrupar(sec).find(x => x[0] === sta
 
 function btnVisao(sec){
   const v = state.prefs[sec].visao;
-  const b = (k, icone, rot) => '<button type="button" class="' + (v === k ? 'on' : '') + '" data-act="set-visao" data-sec="' + sec + '" data-v="' + k + '" aria-pressed="' + (v === k) + '" aria-label="Visão ' + rot + '">' + ic(icone,15) + '<span class="rot-v">' + rot + '</span></button>';
-  return '<div class="seg" role="group" aria-label="Visão">' + b('kanban','columns','Kanban') + b('lista','list','Lista') + b('foco','target','Foco') +
+  const b = (k, icone, rot) => '<button type="button" class="' + (v === k ? 'on' : '') + '" data-act="set-visao" data-sec="' + sec + '" data-v="' + k + '" aria-pressed="' + (v === k) + '" aria-label="Visão ' + rot + '"' + (v === k ? '' : ' data-tip="' + rot + '" data-tip-sempre="1"') + '>' + ic(icone,15) + '<span class="rot-v">' + rot + '</span></button>';
+  return '<div class="seg visao" role="group" aria-label="Visão">' + b('kanban','columns','Kanban') + b('lista','list','Lista') + b('foco','target','Foco') +
     (SECOES_CALENDARIO.indexOf(sec) !== -1 ? b('calendario','calendar','Calendário') : '') + '</div>';
 }
 /** O que a barra de ferramentas de cada seção oferece (vale também para o sheet "Filtros" do celular). */
@@ -4019,26 +4029,25 @@ function ferramentas(sec){
     // celular: só a visão, "Filtros (n)" (filtros, ordem, agrupamento e exibição num sheet) e os concluídos
     const n = contaFiltrosSec(sec);
     h += '<button type="button" class="btn' + (n ? ' on' : '') + '" data-act="sheet-opcoes" data-sec="' + sec + '">' + ic('filter',15) + 'Filtros' + (n ? ' (' + n + ')' : '') + '</button>';
-    if(o.concluidos) h += btnVerConcluidos(sec, true);
+    // "Ver concluídos" fica dentro de Filtros (com a contagem); à direita, só ícones
+    h += '<span class="tb-fim"></span>';
+    if(o.concluidos && state.prefs[sec].concluidos) h += btnVerConcluidos(sec, true);
     h += '<button type="button" class="btn icon-only" data-act="sheet-exibicao" data-sec="' + sec + '" aria-label="Exibição: campos do card e quebra de linha">' + ic('gear',16) + '</button>';
     if(SECOES_ARRASTAVEIS.indexOf(sec) !== -1) h += btnSelecionar(true);
     return h;
   }
-  if(o.filtros !== false){ const n = contaFiltrosSec(sec); h += '<button type="button" class="btn' + (n ? ' on' : '') + '" data-act="sheet-filtros" data-sec="' + sec + '">' + ic('filter',15) + 'Filtros' + (n ? ' (' + n + ')' : '') + '</button>'; }
-  if(o.ordem !== false) h += '<button type="button" class="btn" data-act="sheet-ordem" data-sec="' + sec + '">' + ic('sort',15) + 'Ordenar' + (state.prefs[sec].ordem === 'manual' ? ': personalizada' : '') + '</button>';
-  if(o.agrupar && !foco) h += '<button type="button" class="btn" data-act="sheet-agrupar" data-sec="' + sec + '">' + ic('layers',15) + 'Agrupar: ' + esc(rotuloAgrupar(sec)) + '</button>';
-  if(o.agruparFuturo) h += '<button type="button" class="btn' + (state.prefs.entrada.agrupar === 'categoria' ? ' on' : '') + '" data-act="toggle-agrup-futuro" aria-pressed="' + (state.prefs.entrada.agrupar === 'categoria') + '">' + ic('layers',15) + 'Agrupar por categoria</button>';
-  if(o.concluidos) h += btnVerConcluidos(sec);
-  if(SECOES_ARRASTAVEIS.indexOf(sec) !== -1) h += btnSelecionar(false);
-  // exibição (campos/colunas e quebra de linha) fica atrás da engrenagem
-  const aberto = state.ui.maisFerr;
-  h += '<button type="button" class="btn icon-only' + (aberto ? ' on' : '') + '" data-act="tog-mais-ferr" aria-expanded="' + aberto + '" aria-label="Mais opções de exibição" data-tip="' + (aberto ? 'Menos opções' : 'Mais opções') + '" data-tip-sempre="1">' + ic('gear',16) + '</button>';
-  if(aberto){
-    if(!foco) h += '<button type="button" class="btn" data-act="sheet-layout" data-v="' + (sec === 'entrada' ? 'entrada' : visao) + '">' + ic('sliders',15) + (sec === 'entrada' ? 'Campos' : visao === 'lista' ? 'Colunas' : 'Campos') + '</button>';
-    if(!foco) h += '<button type="button" class="btn' + (state.prefs.mostrarVazios ? ' on' : '') + '" data-act="tog-vazios" aria-pressed="' + !!state.prefs.mostrarVazios + '">' + ic('plus',15) + 'Campos vazios</button>';
-    h += '<button type="button" class="btn' + (state.prefs.listaQuebra ? ' on' : '') + '" data-act="tog-quebra" aria-pressed="' + state.prefs.listaQuebra + '">' + ic('wrap',15) + 'Quebrar linhas</button>';
-  }
-  return h;
+  // [visão] | [filtrar, ordenar, agrupar] ··· [concluídos, selecionar, exibição]: o valor atual aparece no próprio botão
+  let refinar = '';
+  if(o.filtros !== false){ const n = contaFiltrosSec(sec); refinar += '<button type="button" class="btn' + (n ? ' on' : '') + '" data-act="sheet-filtros" data-sec="' + sec + '">' + ic('filter',15) + 'Filtros' + (n ? ' (' + n + ')' : '') + '</button>'; }
+  if(o.ordem !== false) refinar += '<button type="button" class="btn" data-act="sheet-ordem" data-sec="' + sec + '" aria-label="Ordenar: ' + esc(rotuloOrdem(sec)) + '" data-tip="Ordenar por" data-tip-sempre="1">' + ic('sort',15) + '<span class="tb-val">' + esc(rotuloOrdem(sec)) + '</span></button>';
+  if(o.agrupar && !foco) refinar += '<button type="button" class="btn" data-act="sheet-agrupar" data-sec="' + sec + '" aria-label="Agrupar: ' + esc(rotuloAgrupar(sec)) + '" data-tip="Agrupar por" data-tip-sempre="1">' + ic('layers',15) + '<span class="tb-val">' + esc(rotuloAgrupar(sec)) + '</span></button>';
+  if(o.agruparFuturo) refinar += '<button type="button" class="btn' + (state.prefs.entrada.agrupar === 'categoria' ? ' on' : '') + '" data-act="toggle-agrup-futuro" aria-pressed="' + (state.prefs.entrada.agrupar === 'categoria') + '" data-tip="Agrupar por categoria" data-tip-sempre="1">' + ic('layers',15) + 'Por categoria</button>';
+  let acoes = '';
+  if(o.concluidos) acoes += btnVerConcluidos(sec, true);
+  if(SECOES_ARRASTAVEIS.indexOf(sec) !== -1) acoes += btnSelecionar(true);
+  // exibição (campos/colunas, campos vazios e quebra de linha) num menu atrás da engrenagem
+  acoes += '<button type="button" class="btn icon-only" data-act="menu-exibicao" data-sec="' + sec + '" aria-haspopup="menu" aria-label="Exibição" data-tip="Exibição: campos, campos vazios e quebra de linha" data-tip-sempre="1">' + ic('gear',16) + '</button>';
+  return h + (h && refinar ? '<span class="tb-div" aria-hidden="true"></span>' : '') + refinar + '<span class="tb-fim"></span>' + acoes;
 }
 function btnSelecionar(compacto){
   const on = !!state.ui.modoSel;
@@ -4095,7 +4104,8 @@ function renderTopbar(){
   // criar pela tela (no celular, pelo botão +): já com o que os filtros dela indicam
   const tipoNovo = secDaTela() ? padroesDoContexto(secDaTela()).tipo : null;
   const rotNovo = tipoNovo === 'projeto' ? 'Novo projeto' : tipoNovo === 'tarefa' ? 'Nova tarefa' : 'Capturar';
-  const btnNovo = ehCelular() ? '' : '<button type="button" class="btn prim" data-act="novo-ctx">' + ic('plus',15) + rotNovo + '</button>';
+  const temNovo = ['entrada','hoje','projetos','tarefas','categoria'].indexOf(r.view) !== -1 && !(r.view === 'projetos' && r.id);
+  const btnNovo = ehCelular() || !temNovo ? '' : '<button type="button" class="btn prim tb-novo" data-act="novo-ctx">' + ic('plus',15) + rotNovo + '</button>';
   const cats = catSec ? '<div class="tb-cats" role="group" aria-label="Filtrar por categoria">' + chipsCategorias(catSec) + '</div>' : '';
   if(r.view === 'projetos' && r.id){
     const p = getItem(r.id);
@@ -4109,27 +4119,27 @@ function renderTopbar(){
     tools = '<div class="seg" role="group" aria-label="Classificação da Entrada">' +
       '<button type="button" class="' + (p.aba === 'triagem' ? 'on' : '') + '" aria-pressed="' + (p.aba === 'triagem') + '" data-act="aba-entrada" data-v="triagem">' + ic('inbox',15) + 'Triagem <span class="cnt">' + c.entrada + '</span></button>' +
       '<button type="button" class="' + (p.aba === 'futuro' ? 'on' : '') + '" aria-pressed="' + (p.aba === 'futuro') + '" data-act="aba-entrada" data-v="futuro">' + ic('archive',15) + 'Futuro <span class="cnt">' + c.futuro + '</span></button></div>' +
-      btnNovo + ferramentas('entrada');
+      '<span class="tb-div" aria-hidden="true"></span>' + ferramentas('entrada');
     chips = chipsFiltros('entrada');
   }else if(r.view === 'categoria'){
     const cat = r.id === 'sem' ? null : getCat(r.id);
     const n = projetosDaCategoria(r.id).filter(p => !concluido(p)).length;
     titulo = cat ? cat.nome : 'Sem categoria';
     sub = 'Categoria · ' + n + (n === 1 ? ' projeto ativo' : ' projetos ativos');
-    tools = btnNovo + ferramentas('categoria');
+    tools = ferramentas('categoria');
     chips = chipsFiltros('categoria');
   }else if(r.view === 'hoje'){
     sub = c.hoje + (c.hoje === 1 ? ' item' : ' itens');
-    tools = btnNovo + ferramentas('hoje');
+    tools = ferramentas('hoje');
     chips = chipsFiltrosHoje();
   }else if(r.view === 'projetos'){
     sub = c.projetos + (c.projetos === 1 ? ' projeto aberto' : ' projetos abertos') + (c.revisao ? ' · ' + c.revisao + ' sem próxima ação' : '');
-    tools = btnNovo + ferramentas('projetos');
+    tools = ferramentas('projetos');
     chips = chipsFiltros('projetos');
   }else if(r.view === 'tarefas'){
     sub = c.tarefas + (c.tarefas === 1 ? ' tarefa aberta' : ' tarefas abertas');
-    tools = btnNovo + ferramentas('tarefas');
-    chips = chipsVinculo() + chipsFiltros('tarefas');
+    tools = ferramentas('tarefas');
+    chips = chipsVinculo() + (chipsFiltros('tarefas') ? '<span class="tb-div" aria-hidden="true"></span>' + chipsFiltros('tarefas') : '');
   }else if(r.view === 'concluidos'){
     const q = r.q || {}, de = q.de && SECOES[q.de] ? q.de : null;
     const pj = q.projeto ? getItem(q.projeto) : null;
@@ -4153,10 +4163,12 @@ function renderTopbar(){
         (state.ui.busca ? '<button type="button" class="sx" data-act="limpar-busca" aria-label="Limpar busca">' + ic('x',14) + '</button>' : '') +
         '<div id="buscaPop"></div></div>' +
       '<button type="button" class="icon-btn busca-mob" data-act="abrir-busca-mobile" aria-label="Buscar">' + ic('search',18) + '</button>' +
+      btnNovo +
     '</div>' +
     // ferramentas e chips recolhem juntos ao rolar para baixo no celular
-    '<div class="tb-extra"><div>' + (tools ? '<div class="tb-tools">' + tools + '</div>' : '<div style="height:10px"></div>') + cats +
-    (chips ? '<div class="tb-chips">' + chips + '</div>' : '') + '</div></div>';
+    // uma linha de chips: atalho de categorias | vínculo | filtros ativos (rola para o lado se não couber)
+    '<div class="tb-extra"><div>' + (tools ? '<div class="tb-tools">' + tools + '</div>' : '<div style="height:10px"></div>') +
+    (cats || chips ? '<div class="tb-chips">' + cats + (cats && chips ? '<span class="tb-div" aria-hidden="true"></span>' : '') + chips + '</div>' : '') + '</div></div>';
   const fab = $('#fab'); if(fab) fab.setAttribute('aria-label', rotNovo === 'Capturar' ? 'Captura rápida (novo item)' : rotNovo);
 }
 
@@ -4239,7 +4251,6 @@ function chipsFiltrosHoje(){
     out.push('<span class="chip">Tipo: ' + esc(p.tipos.map(t => n[t]).join(', ') || 'nenhum') + chipX('rm-filtro','data-sec="hoje" data-f="tipos"','tipo') + '</span>');
   }
   out.push(chipsExtras('hoje'));
-  out.push('<span class="chip">' + ic('sort',12) + 'Ordem: ' + esc(rotuloOrdem('hoje')) + '</span>');
   if(contaFiltrosHoje()) out.push('<button type="button" class="chip clickable" data-act="limpar-filtros" data-sec="hoje">' + ic('refresh',12) + 'Limpar filtros</button>');
   return out.join('');
 }
@@ -6189,6 +6200,15 @@ const ACOES = {
   'cal-sel': d => { state.ui.calDia = d.v; state.ui.focar = '[data-act="cal-sel"][data-v="' + d.v + '"]'; render(); },
   'cal-regra': d => { state.prefs[d.sec].cal.regra = d.v; persistirPrefs(); render(); },
   'cal-novo': d => sheetCaptura(undefined, {dataEntrega:d.v}),
+  'menu-exibicao': (d, el) => {
+    const sec = d.sec, o = optsFerramentas(sec), visao = o.visao === false ? 'lista' : state.prefs[sec].visao;
+    const semCampos = visao === 'foco' || visao === 'calendario', v = sec === 'entrada' ? 'entrada' : visao;
+    const m = [{titulo:'Exibição'}];
+    if(!semCampos) m.push({id:'lay', label:(sec === 'entrada' ? 'Campos da Entrada' : rotuloLayout(visao)) + '…', icone:'sliders', acao:() => sheetLayout(v)},
+      {id:'vaz', label:'Mostrar campos vazios', icone:'plus', marcado:!!state.prefs.mostrarVazios, acao:() => ACOES['tog-vazios']()});
+    m.push({id:'qb', label:'Quebrar linhas', icone:'wrap', marcado:!!state.prefs.listaQuebra, acao:() => ACOES['tog-quebra']()});
+    abrirMenu(el, m);
+  },
   'tog-xf': d => { const e = filtroExtraOuNovo(state.prefs[d.sec], d.c); e.vals = e.vals || []; toggleArr(e.vals, d.v); persistirPrefs(); render(); },
   'rm-xf': d => { const p = state.prefs[d.sec]; p.extrasF = (p.extrasF || []).filter(e => e.c !== d.c); persistirPrefs(); render(); },
   'rm-arr': d => { const a = state.prefs[d.sec][d.k], i = a.indexOf(d.v); if(i !== -1) a.splice(i, 1); persistirPrefs(); render(); },
