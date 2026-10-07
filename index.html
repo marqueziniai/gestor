@@ -1613,12 +1613,23 @@ const nomeProjeto = id => { const p = getItem(id); return p ? p.titulo : null; }
 /** Tarefas ativas de um projeto (inclui lembretes). */
 const subtarefas = pid => items().filter(i => i.tipo === 'tarefa' && i.projetoId === pid && i.secao === 'tarefas');
 const subtarefasFuturo = pid => items().filter(i => i.tipo === 'tarefa' && i.projetoId === pid && i.secao === 'futuro');
-/** Próxima ação (GTD): a tarefa marcada no projeto, enquanto estiver aberta e ligada a ele. */
-function proximaAcao(p){
+/** Próxima ação escolhida à mão: a tarefa marcada no projeto, enquanto estiver aberta e ligada a ele. */
+function proximaManual(p){
   if(!p || p.tipo !== 'projeto' || !p.proximaId) return null;
   const t = getItem(p.proximaId);
   return t && t.tipo === 'tarefa' && t.projetoId === p.id && !ehLembrete(t) && !concluido(t) && t.secao === 'tarefas' ? t : null;
 }
+/** Sem escolha manual, vale a tarefa aberta com a menor data de entrega (empate: a mais antiga; sem nenhuma data: a mais antiga). */
+function proximaAuto(p){
+  if(!p || p.tipo !== 'projeto' || p.secao !== 'projetos' || concluido(p)) return null;
+  const c = candidatasProxima(p);
+  if(!c.length) return null;
+  const d = t => t.dataEntrega || '9999-12-31';
+  return c.slice().sort((a, b) => d(a) < d(b) ? -1 : d(a) > d(b) ? 1 : (a.criadoEm < b.criadoEm ? -1 : 1))[0];
+}
+/** Próxima ação (GTD): a escolhida à mão ou, na falta dela, a de menor data de entrega. */
+const proximaAcao = p => proximaManual(p) || proximaAuto(p);
+const proximaEhAuto = p => !proximaManual(p) && !!proximaAuto(p);
 /** Projeto ativo sem próxima ação é projeto parado. */
 const semProxima = p => !!p && p.tipo === 'projeto' && p.secao === 'projetos' && !concluido(p) && !proximaAcao(p);
 const ehProxima = t => !!t && t.tipo === 'tarefa' && !!t.projetoId && proximaAcao(getItem(t.projetoId)) === t;
@@ -1876,7 +1887,6 @@ function alterar(id, mud, opts){
   // o título do lembrete acompanha o da origem, se não foi personalizado
   if('titulo' in mud){ const f = lembreteDe(it.id); if(f && f.titulo === tituloAntigo) f.titulo = it.titulo; }
   if(!ehLembrete(it)) sincronizarLembrete(it);
-  if('projetoId' in mud || 'secao' in mud || 'status' in mud) sugerirProxima(it);
   persistir();
   if(!opts.semRender) render();
   return it;
@@ -1925,32 +1935,27 @@ function criarItem(base, opts){
   items().push(it);
   if(it.projetoId) registrar(getItem(it.projetoId), {icone:'plus', texto:'Tarefa adicionada: “' + it.titulo + '”'});
   sincronizarLembrete(it);
-  sugerirProxima(it);
   persistir();
   if(!(opts && opts.semRender)) render();
   return it;
 }
 
 /* --- Próxima ação (GTD): cada projeto ativo precisa de uma tarefa marcada como a próxima --- */
-/** Projeto sem próxima ação adota a tarefa aberta que acabou de entrar nele (dá para trocar depois). */
-function sugerirProxima(t){
-  if(!t || t.tipo !== 'tarefa' || !t.projetoId || ehLembrete(t) || concluido(t) || t.secao !== 'tarefas') return;
-  const p = getItem(t.projetoId);
-  if(!p || p.tipo !== 'projeto' || concluido(p) || proximaAcao(p)) return;
-  p.proximaId = t.id;
-  registrar(p, {icone:'play', texto:'Próxima ação: “' + t.titulo + '”'});
-}
+/** Sem escolha manual, o projeto usa sozinho a tarefa de menor data de entrega (proximaAuto); escolher uma tarefa a fixa, e "desmarcar" volta à automática. */
 function definirProxima(pid, tid){
   const p = getItem(pid); if(!p) return;
   const t = tid ? getItem(tid) : null;
-  const antes = proximaAcao(p);
-  if((antes ? antes.id : null) === (t ? t.id : null)) return;
+  const manualAntes = proximaManual(p), antes = proximaAcao(p);
+  if((manualAntes ? manualAntes.id : null) === (t ? t.id : null)) return;
   p.proximaId = t ? t.id : null;
-  registrar(p, {icone:'play', rotulo:'Próxima ação', de: antes ? antes.titulo : 'nenhuma', para: t ? t.titulo : 'nenhuma'});
-  if(t) registrar(t, {icone:'play', texto:'Marcada como próxima ação do projeto'});
-  if(antes) registrar(antes, {icone:'play', texto:'Deixou de ser a próxima ação do projeto'});
+  const depois = proximaAcao(p);
+  if((antes ? antes.id : null) !== (depois ? depois.id : null)){
+    registrar(p, {icone:'play', rotulo:'Próxima ação', de: antes ? antes.titulo : 'nenhuma', para: depois ? depois.titulo : 'nenhuma'});
+    if(depois) registrar(depois, {icone:'play', texto:'Marcada como próxima ação do projeto'});
+    if(antes) registrar(antes, {icone:'play', texto:'Deixou de ser a próxima ação do projeto'});
+  }
   persistir(); render();
-  toast(t ? 'Próxima ação: “' + t.titulo + '”' : 'Projeto sem próxima ação');
+  toast(t ? 'Próxima ação fixada: “' + t.titulo + '”' : depois ? 'Próxima ação automática: “' + depois.titulo + '” (menor data de entrega)' : 'Projeto sem próxima ação');
 }
 /** Escolher a próxima ação: tarefas abertas do projeto ou uma nova tarefa. */
 /** Revisão: depois de escolher a próxima ação, pergunta quando fazer (Data de Entrega). */
@@ -1961,20 +1966,19 @@ function pedirDataProxima(tid){
 function escolherProxima(anchor, pid, o){
   o = o || {};
   const p = getItem(pid); if(!p) return;
-  const atual = proximaAcao(p);
+  const atual = proximaAcao(p), auto = proximaEhAuto(p);
   const cands = candidatasProxima(p);
-  const itens = [{titulo:'Próxima ação de “' + p.titulo + '”'}]
-    .concat(cands.length ? cands.map(t => ({id:t.id, label:t.titulo, icone:'checkSq', marcado: atual === t, acao:() => { definirProxima(pid, t.id); if(o.pedirData) pedirDataProxima(t.id); }}))
+  const itens = [{titulo:'Próxima ação de “' + p.titulo + '”' + (auto ? ' (automática)' : '')}]
+    .concat(cands.length ? cands.map(t => ({id:t.id, label:t.titulo + (t.dataEntrega ? ' · ' + fmtCurta(t.dataEntrega) : ''), icone:'checkSq', marcado: atual === t, acao:() => { definirProxima(pid, t.id); if(o.pedirData) pedirDataProxima(t.id); }}))
                          : [{id:'nada', label:'Nenhuma tarefa aberta no projeto', desabilitado:true}])
     .concat(['-', {id:'nova', label:'Nova tarefa como próxima ação…', icone:'plus', acao:() => popTexto(anchor, {titulo:'Nova próxima ação', valor:'',
       salvar:v => {
         if(!v) return;
-        const t = criarItem({tipo:'tarefa', secao:'tarefas', projetoId:pid, titulo:v}, {semRender:true});   // pode já virar a próxima (sugerirProxima)
-        if(proximaAcao(p) !== t) definirProxima(pid, t.id);
-        else { persistir(); render(); toast('Próxima ação: “' + t.titulo + '”'); }
+        const t = criarItem({tipo:'tarefa', secao:'tarefas', projetoId:pid, titulo:v}, {semRender:true});
+        definirProxima(pid, t.id);   // escolhida à mão: fica fixa
         if(o.pedirData) pedirDataProxima(t.id);
       }})}]);
-  if(atual) itens.push({id:'limpar', label:'Desmarcar próxima ação', icone:'x', acao:() => definirProxima(pid, null)});
+  if(proximaManual(p)) itens.push({id:'limpar', label:'Voltar para a automática (menor data)', icone:'x', acao:() => definirProxima(pid, null)});
   abrirMenu(anchor, itens);
 }
 
@@ -2222,6 +2226,7 @@ function concluirTarefa(it){
   // GTD: concluiu a próxima ação → o projeto precisa de outra, senão fica parado
   const p = eraProxima ? getItem(it.projetoId) : null;
   if(p && semProxima(p)) toast('“' + p.titulo + '” ficou sem próxima ação', null, {label:'Definir', fn:() => escolherProxima(null, p.id)});
+  else if(p && proximaAcao(p)) toast('Próxima ação de “' + p.titulo + '”: “' + proximaAcao(p).titulo + '”');
 }
 /** Concluir projeto: pergunta o que fazer com as tarefas abertas. */
 function confirmarConclusaoProjeto(p, opts){
@@ -6125,8 +6130,8 @@ function menuDoItem(btn, id){
   if(it.tipo === 'projeto' && !concluido(it) && it.secao === 'projetos') m.push({id:'px', label: proximaAcao(it) ? 'Trocar próxima ação' : 'Definir próxima ação', icone:'play', acao:() => escolherProxima(ancora(), id)});
   if(it.tipo === 'tarefa' && !ehLembrete(it) && it.projetoId && !concluido(it) && it.secao === 'tarefas'){
     const p = getItem(it.projetoId);
-    if(p && !concluido(p)) m.push(ehProxima(it) ? {id:'npx', label:'Desmarcar como próxima ação', icone:'play', acao:() => definirProxima(p.id, null)}
-                                                : {id:'spx', label:'Marcar como próxima ação', icone:'play', acao:() => definirProxima(p.id, id)});
+    if(p && !concluido(p)) m.push(proximaManual(p) === it ? {id:'npx', label:'Voltar para a próxima ação automática', icone:'play', acao:() => definirProxima(p.id, null)}
+                                                : {id:'spx', label:ehProxima(it) ? 'Fixar como próxima ação' : 'Marcar como próxima ação', icone:'play', acao:() => definirProxima(p.id, id)});
   }
   if(ehLembrete(it)){
     const o = getItem(it.origemId);
