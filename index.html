@@ -3199,12 +3199,28 @@ function recDe(it, cid){
   const alvo = ehLembrete(it) && cid === 'dataLembrete' ? getItem(it.origemId) : it;
   return alvo && alvo.recorrencia ? (alvo.recorrencia[cid] || null) : null;
 }
+/** Na lista, o texto do lembrete vai para a coluna "Texto do lembrete" (se estiver visível); sem ela, continua em Descrição. */
+const textoLembreteNaColuna = lay => layoutVisivel(lay || 'lista').indexOf('textoLembrete') !== -1;
+/** A coluna se aplica a esta linha da lista? (o lembrete tem "Texto do lembrete", que o campo comum não tem) */
+const aplicaNaLista = (c, it) => !!c && ((ehLembrete(it) && c.id === 'textoLembrete' && c.ativo !== false) || campoAplica(c, it));
+/** Texto de uma célula vazia da lista: diz o que dá para preencher ao clicar. */
+function textoVazioLista(it, cid){
+  const nome = nomeCampo(cid);
+  switch(cid){
+    case 'descricao': return ehLembrete(it) ? 'Texto para lembrete' : 'Adicionar descrição';
+    case 'textoLembrete': return 'Texto para lembrete';
+    case 'comentarios': case 'ultimoComentario': return 'Adicionar comentário';
+    case 'projetoId': return 'Sem projeto';
+    case 'categoriaId': return 'Sem categoria';
+  }
+  return 'Sem ' + nome.charAt(0).toLowerCase() + nome.slice(1);
+}
 function chipVazio(it, cid, modo){
   const nome = nomeCampo(cid);
   const def = campoDef(cid);
   // data vazia em lista/foco: "Sem data" discreto, mas clicável (abre o seletor)
   if(modo === 'lista' && (ehData(cid) || (def && def.tipo === 'data'))) return chipSemData(it, cid);
-  const txt = modo === 'lista' ? '—' : '+ ' + (ehData(cid) ? rotuloCurto(cid) : nome);
+  const txt = modo === 'lista' ? textoVazioLista(it, cid) : '+ ' + (ehData(cid) ? rotuloCurto(cid) : nome);
   return '<button type="button" class="fc vazio"' + attrEdit(it, cid) + ' aria-label="Definir ' + esc(nome) + '">' + esc(txt) + '</button>';
 }
 /** "Mostrar campos vazios": cada campo sem valor aparece como "Sem …" e abre a escolha ao tocar. */
@@ -3227,9 +3243,13 @@ function chipData(it, cid, modo, iso, rec){
     (rec ? '<span class="rec">' + ic('repeat', 11) + '</span>' : '') + '</button>';
 }
 /** Devolve {k, h}: k = meta | titulo | bloco | chip | barra. modo: kanban (cards) | lista (células) | card (detalhe). */
-function pecaCampo(it, cid, modo){
+function pecaCampo(it, cid, modo, lay){
   const def = campoDef(cid);
-  if(!def || !campoAplica(def, it)) return null;
+  // lista e cards: o lembrete mostra o texto em "Texto do lembrete" (se o campo estiver visível), não em Descrição
+  const lembNaColuna = modo !== 'card' && ehLembrete(it) && textoLembreteNaColuna(lay);
+  if(def && modo !== 'card' && ehLembrete(it) && cid === 'textoLembrete' && def.ativo !== false && lembNaColuna){ /* aplica-se ao lembrete */ }
+  else if(!def || !campoAplica(def, it)) return null;
+  if(lembNaColuna && cid === 'descricao') return null;
   const nome = def.nome;
   switch(cid){
     case 'titulo':
@@ -3248,7 +3268,7 @@ function pecaCampo(it, cid, modo){
     }
     case 'descricao': case 'textoLembrete': {
       // no lembrete, a "descrição" é o texto do lembrete (guardado na origem)
-      const valor = it[cid] || '';
+      const valor = (ehLembrete(it) && cid === 'textoLembrete' ? it.descricao : it[cid]) || '';   // no lembrete, o texto fica em "descricao"
       const rotulo = ehLembrete(it) && cid === 'descricao' ? nomeCampo('textoLembrete') : nome;
       const dica = cid === 'textoLembrete' || ehLembrete(it) ? 'Do que você quer se lembrar' : 'Descrição do que precisa fazer';
       if(modo === 'card') return {k:'bloco', h:'<textarea class="inp" data-field="' + cid + '" data-id="' + it.id + '" rows="3" placeholder="' + dica + '" aria-label="' + esc(rotulo) + '" autocapitalize="sentences">' + esc(valor) + '</textarea>'};
@@ -3299,7 +3319,7 @@ function pecaCampo(it, cid, modo){
       const n = contaComentarios(it);
       if(!n && modo === 'kanban' && !state.prefs.mostrarVazios) return null;
       // clicar escreve um comentário novo
-      return {k:'chip', h:'<button type="button" class="fc' + (n ? '' : ' vazio') + '"' + attrEdit(it, cid) + ' aria-label="' + n + ' comentário(s). Escrever um comentário">' + ic('msg', 12) + (n || '+ Comentário') + '</button>'};
+      return {k:'chip', h:'<button type="button" class="fc' + (n ? '' : ' vazio') + '"' + attrEdit(it, cid) + ' aria-label="' + n + ' comentário(s). Escrever um comentário">' + ic('msg', 12) + (n || (modo === 'lista' ? 'Adicionar comentário' : '+ Comentário')) + '</button>'};
     }
     case 'ultimoComentario': {
       const c = ultimoComentario(it);
@@ -3341,7 +3361,7 @@ function abrirEditorCampo(anchor, id, cid){
     case 'descricao':
       if(ehLembrete(it)) return popTexto(anchor, {titulo:nomeCampo('textoLembrete'), valor:it.descricao, multi:true, sel, salvar:v => definirTextoLembrete(id, v)});
       return popTexto(anchor, {titulo:nome, valor:it.descricao, multi:true, sel, salvar:v => alterar(id, {descricao:v})});
-    case 'textoLembrete': return popTexto(anchor, {titulo:nome, valor:it.textoLembrete || '', multi:true, sel, salvar:v => definirTextoLembrete(id, v)});
+    case 'textoLembrete': return popTexto(anchor, {titulo:nome, valor:(ehLembrete(it) ? it.descricao : it.textoLembrete) || '', multi:true, sel, salvar:v => definirTextoLembrete(id, v)});
     case 'ultimoComentario': {
       const c = ultimoComentario(it);
       return popTexto(anchor, {titulo: c ? 'Editar último comentário' : 'Novo comentário', valor: c ? c.texto : '', multi:true, sel,
@@ -3567,7 +3587,7 @@ function cardHTML(it, ctx){
   layoutVisivel(ctx.layout).forEach(function(cid){
     const vazio = campoVazio(it, cid);
     if(vazio && !mostrarVazios){ vazios.push(cid); return; }
-    const p = vazio ? {k:'chip', h:chipSemValor(it, cid)} : pecaCampo(it, cid, 'kanban'); if(!p) return;
+    const p = vazio ? {k:'chip', h:chipSemValor(it, cid)} : pecaCampo(it, cid, 'kanban', ctx.layout); if(!p) return;
     if(p.k === 'titulo'){ flush(); corpo += '<div class="c-trow">' + btnConcluir(it) + p.h + '</div>'; return; }
     if(p.k === 'meta' || p.k === 'chip'){ if(grupoAtual !== p.k) flush(); grupoAtual = p.k; buf.push(p.h); }
     else { flush(); corpo += p.h; }
@@ -3666,7 +3686,7 @@ function focoHTML(sec, itens, o){
 function larguraCol(cid, quebra){
   // [mínimo sem quebra, mínimo com quebra, peso]: o título tem prioridade de espaço
   const T = {titulo:[170,180,2.8], descricao:[160,120,2], textoLembrete:[160,120,1.8], projetoId:[110,88,1.1], status:[112,84,.9], categoriaId:[100,76,.8],
-    dataLembrete:[112,86,.9], dataEntrega:[112,86,.9], tipo:[96,92,.5], proximaAcao:[140,110,1.1], progresso:[120,90,.8], comentarios:[48,40,.3], ultimoComentario:[160,120,1.6], ultimaAtualizacao:[170,120,1.6]};
+    dataLembrete:[112,86,.9], dataEntrega:[112,86,.9], tipo:[96,92,.5], proximaAcao:[140,110,1.1], progresso:[120,90,.8], comentarios:[110,90,.6], ultimoComentario:[160,120,1.6], ultimaAtualizacao:[170,120,1.6]};
   const d = campoDef(cid);
   const t = T[cid] || (d && d.tipo === 'numero' ? [84,64,.5] : d && d.tipo === 'data' ? [112,92,.9] : [96,80,1]);
   const min = quebra ? t[1] : t[0];
@@ -3759,7 +3779,7 @@ function listaHTML(sec, conteudo, ctx){
   // colunas que não se aplicam a nenhuma linha desta visão ficam de fora (ex.: Progresso em Tarefas)
   const todosItens = grupos ? grupos.reduce((a, g) => a.concat(g.itens), []) : conteudo.itens;
   const lay = sec === 'entrada' ? 'entrada' : 'lista';   // a Entrada (Futuro) tem campos próprios
-  const cols = layoutVisivel(lay).filter(cid => cid === 'titulo' || !todosItens.length || todosItens.some(it => campoAplica(campoDef(cid), it)));
+  const cols = layoutVisivel(lay).filter(cid => cid === 'titulo' || !todosItens.length || todosItens.some(it => aplicaNaLista(campoDef(cid), it)));
   const acoesW = ctx.acaoLinha ? 128 : 40;
   const extras = acoesW + cols.length * 10 + 26;
   const util = larguraUtil(), L = state.prefs.larguras || {};
@@ -3795,7 +3815,7 @@ function listaHTML(sec, conteudo, ctx){
   const linha = function(it, sub){
     const m = ctx.motivoFn && !sub ? ctx.motivoFn(it) : null;
     const cells = cols.map(function(cid){
-      const pc = pecaCampo(it, cid, 'lista');
+      const pc = pecaCampo(it, cid, 'lista', lay);
       let h = pc ? pc.h : '';
       if(cid === 'titulo') h = '<div class="c-trow">' + btnConcluir(it) + '<div style="flex:1;min-width:0">' + h + chkResumo(it) + linhaMotivo(m, 'cell-motivo') +
         (semProxima(it) && cols.indexOf('proximaAcao') === -1 ? alertaProxima(it) : '') + '</div></div>';
