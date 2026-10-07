@@ -391,6 +391,11 @@ button.prog-wrap[aria-expanded="true"] .chev{transform:rotate(180deg)}
 .grupo-h .chev{transition:transform var(--t);color:var(--text-3)}
 .grupo.col .chev{transform:rotate(-90deg)}
 .grupo.col .grupo-body{display:none}
+/* Lista: o grupo é um destino de soltar (como a coluna do kanban); grupos vazios ficam só como um cabeçalho discreto, sem deslocar a tela ao arrastar */
+.grupo[data-drop].over{background:var(--accent-soft);box-shadow:0 0 0 2px var(--accent);border-radius:var(--r-md)}
+.grupo.g-vazio .grupo-body{display:none}
+.grupo.g-vazio .grupo-h{opacity:.55;transition:opacity var(--t)}
+.grupo.g-vazio.over .grupo-h,body.drag-ativo .grupo.g-vazio .grupo-h{opacity:1}
 .grupo-body{padding-top:6px}
 .cards{display:flex;flex-direction:column;gap:8px}
 
@@ -3743,7 +3748,10 @@ function listaHTML(sec, conteudo, ctx){
   const quebra = state.prefs.listaQuebra;
   // com tudo vazio, os grupos aparecem mesmo assim (como as colunas do kanban), cada um com "+ Adicionar"
   const tudoVazio = conteudo.grupos && conteudo.grupos.every(g => !g.itens.length);
-  const grupos = conteudo.grupos ? conteudo.grupos.filter(g => tudoVazio || g.itens.length || g.sempre || (ctx.podeAdicionar && state.ui.addCol && state.ui.addCol.sec === sec && state.ui.addCol.col === g.chave)) : null;
+  const visivel = g => tudoVazio || g.itens.length || g.sempre || (ctx.podeAdicionar && state.ui.addCol && state.ui.addCol.sec === sec && state.ui.addCol.col === g.chave);
+  // com destino de soltar, os grupos vazios também entram (só o cabeçalho, discreto), para dar para soltar um card neles
+  const grupos = conteudo.grupos ? (ctx.dropKind ? conteudo.grupos : conteudo.grupos.filter(visivel)) : null;
+  const gOpts = g => ({dropKind:ctx.dropKind, oculto: !!ctx.dropKind && !visivel(g)});
   const addAberto = col => state.ui.addCol && state.ui.addCol.sec === sec && state.ui.addCol.col === col;
   const rodapeAdd = (col, nome) => addAberto(col) ? '<div class="add-row">' + rascunhoHTML(sec, col, nome) + '</div>'
     : (ctx.podeAdicionar && ctx.podeAdicionar(col)) || (col === '__todos' && ctx.addFlat) ? '<div class="add-row">' + botaoAdicionar(sec, col, 'add-grupo') + '</div>' : '';
@@ -3770,7 +3778,7 @@ function listaHTML(sec, conteudo, ctx){
   if(!usarGrade){
     const card = it => cardHTML(it, {layout:lay, motivo: ctx.motivoFn ? ctx.motivoFn(it) : null, rodape:ctx.rodape, arrastavel:arrasta});
     const bloco = (its, col, nome) => (its.length ? '<div class="cards">' + recemNoFim(its).map(card).join('') + '</div>' : (addAberto(col) ? '' : '<p class="muted" style="padding:4px 6px">' + esc(ctx.vazioGrupo || 'Nada aqui') + '</p>')) + rodapeAdd(col, nome);
-    const corpo = grupos ? grupos.map(g => grupo(sec, g.chave, g.nome, bloco(g.itens, g.chave, g.nome), g.itens.length)).join('') : bloco(conteudo.itens, '__todos', 'lista');
+    const corpo = grupos ? grupos.map(g => grupo(sec, g.chave, g.nome, bloco(g.itens, g.chave, g.nome), g.itens.length, gOpts(g))).join('') : bloco(conteudo.itens, '__todos', 'lista');
     return '<div class="lista-m' + (quebra ? ' quebra' : '') + '">' + corpo + '</div>';
   }
   const gtc = larg.map(l => l[1]).concat([acoesW + 'px']).join(' ');
@@ -3802,12 +3810,14 @@ function listaHTML(sec, conteudo, ctx){
     return h;
   };
   const bloco = (its, col, nome) => (its.length ? recemNoFim(its).map(it => linha(it)).join('') : (addAberto(col) ? '' : '<p class="muted" style="padding:10px 12px">' + esc(ctx.vazioGrupo || 'Nada aqui') + '</p>')) + (rodapeAdd(col, nome) ? '<div style="padding:0 12px">' + rodapeAdd(col, nome) + '</div>' : '');
-  const corpo = grupos ? grupos.map(g => grupo(sec, g.chave, g.nome, bloco(g.itens, g.chave, g.nome), g.itens.length)).join('') : bloco(conteudo.itens, '__todos', 'lista');
+  const corpo = grupos ? grupos.map(g => grupo(sec, g.chave, g.nome, bloco(g.itens, g.chave, g.nome), g.itens.length, gOpts(g))).join('') : bloco(conteudo.itens, '__todos', 'lista');
   return '<div class="lista-wrap"><div class="lista' + (quebra ? ' quebra' : '') + '" style="--minw:' + minw + 'px;--gtc:' + gtc + '">' + head + corpo + '</div></div>';
 }
-function grupo(sec, chave, titulo, corpo, n){
+function grupo(sec, chave, titulo, corpo, n, o){
+  o = o || {};
   const col = ((state.prefs[sec] && state.prefs[sec].colapsados) || []).indexOf(chave) !== -1;
-  return '<section class="grupo' + (col ? ' col' : '') + '">' +
+  return '<section class="grupo' + (col ? ' col' : '') + (o.oculto ? ' g-vazio' : '') + '"' +
+    (o.dropKind ? ' data-drop="1" data-drop-kind="' + esc(o.dropKind) + '" data-drop-col="' + esc(chave) + '"' : '') + '>' +
     '<button type="button" class="grupo-h" data-act="toggle-grupo" data-sec="' + sec + '" data-grp="' + esc(chave) + '" aria-expanded="' + (!col) + '">' +
     ic('chevD', 15, 'chev') + '<span>' + esc(titulo) + '</span><span class="cnt">' + n + '</span></button>' +
     '<div class="grupo-body">' + corpo + '</div></section>';
@@ -4687,12 +4697,12 @@ function viewHoje(){
   const agK = p.visao === 'kanban' && ag === 'nenhum' ? 'faixa' : ag;   // o kanban sempre tem colunas
   if(agK === 'nenhum') return listaHTML('hoje', {itens:lista}, {motivoFn:motivoHoje, addFlat:true});
   const grupos = soColunasFiltradas('hoje', gruposHoje(lista, agK), agK);
+  const kind = agK.indexOf('x:') === 0 ? agK : {faixa:'faixa', categoria:'categoria', projeto:'projeto', tipo:'converter'}[agK] || '';
   if(p.visao === 'kanban'){
-    const kind = agK.indexOf('x:') === 0 ? agK : {faixa:'faixa', categoria:'categoria', projeto:'projeto'}[agK] || '';
     return (kind === 'faixa' ? '<p class="hint" style="margin:0 0 8px">' + ic('info',13) + '<span>Arraste um card para outra faixa para reagendar a data que o trouxe para cá. Cards movidos para fora do período continuam visíveis até você sair da tela.</span></p>' : '') +
       kanbanHTML('hoje', grupos, {dropKind:kind, motivoFn:motivoHoje, podeAdicionar: k => k !== 'vencidos'});
   }
-  return listaHTML('hoje', {grupos}, {motivoFn:motivoHoje, podeAdicionar: k => k !== 'vencidos'});
+  return listaHTML('hoje', {grupos}, {dropKind:kind, motivoFn:motivoHoje, podeAdicionar: k => k !== 'vencidos'});
 }
 
 /** Com filtro na mesma dimensão das colunas (status, categoria ou projeto), só as colunas filtradas aparecem. */
@@ -4736,7 +4746,7 @@ function viewProjetos(){
     ? listaStatus('projeto').map(s => ({chave:s.id, nome:s.nome, cor:s.cor, itens:lista.filter(i => i.status === s.id)}))
     : cx ? gruposCampo(lista, cx) : gruposCategoria(lista), ag);
   if(p.visao === 'kanban') return kanbanHTML('projetos', grupos, ag === 'status' ? {dropKind:'status-projeto', statusTipo:'projeto'} : {dropKind: cx ? ag : 'categoria'});
-  return listaHTML('projetos', {grupos}, {podeAdicionar: () => true});
+  return listaHTML('projetos', {grupos}, {dropKind: ag === 'status' ? 'status-projeto' : cx ? ag : 'categoria', podeAdicionar: () => true});
 }
 
 /* ---------- PÁGINA DA CATEGORIA (os projetos dela; categoria é um grupo de projetos) ---------- */
@@ -4866,7 +4876,7 @@ function viewTarefas(){
   grupos = soColunasFiltradas('tarefas', grupos, ag);
   if(p.visao === 'kanban') return kanbanHTML('tarefas', grupos, ctxK);
   if(p.agrupar === 'nenhum') return listaHTML('tarefas', {itens:lista}, {addFlat:true});
-  return listaHTML('tarefas', {grupos}, {vazioGrupo:'Nenhuma tarefa', podeAdicionar: ctxK.podeAdicionar || (() => true)});
+  return listaHTML('tarefas', {grupos}, {dropKind:ctxK.dropKind, vazioGrupo:'Nenhuma tarefa', podeAdicionar: ctxK.podeAdicionar || (() => true)});
 }
 
 /* ---------- CONCLUÍDOS (arquivo pesquisável) ---------- */
@@ -5642,7 +5652,9 @@ function ativarDrag(){
   // ordem de partida (para saber se o card mudou de posição) e onde ele estava
   ptr.antes = $$('#view [data-drag-id]').map(x => x.dataset.dragId).join(',');
   ptr.colOrigem = ptr.el.closest('.kcol');
+  ptr.grupoOrigem = ptr.colOrigem ? null : ptr.el.closest('.grupo[data-drop]');   // lista agrupada: o grupo de onde o card saiu
   ptr.listaOrigem = ptr.el.parentElement;
+  document.body.classList.add('drag-ativo');
   soltarPressao(ptr);
   criarFantasma(ptr.el);
   ptr.el.classList.add('dragging');
@@ -5656,10 +5668,14 @@ function ativarDrag(){
 function montarDropbar(kb, colDoCard, it){
   const zona = (kind, col, rot, cor, cls) => '<div class="dz' + (cls ? ' ' + cls : '') + '" data-drop="1" data-drop-kind="' + esc(kind) + '" data-drop-col="' + esc(col) + '">' +
     (cor ? '<span class="cdot" style="background:' + esc(cor) + '"></span>' : '') + esc(rot) + '</div>';
-  const cols = kb ? $$('.kcol[data-drop]', kb).map(function(c){
+  let cols = kb ? $$('.kcol[data-drop]', kb).map(function(c){
     const cor = c.querySelector('.kcol-h .cdot');
     return zona(c.dataset.dropKind, c.dataset.dropCol, c.getAttribute('aria-label') || '', cor ? cor.style.background : '', c === colDoCard ? 'atual' : '');
   }).join('') : '';
+  if(!kb) cols = $$('#view .grupo[data-drop]').map(function(g){   // lista agrupada: um destino por grupo
+    const nm = g.querySelector('.grupo-h > span');
+    return zona(g.dataset.dropKind, g.dataset.dropCol, nm ? nm.textContent : '', '', ptr && ptr.grupoOrigem === g ? 'atual' : '');
+  }).join('');
   let destinos = '';
   if(it && it.tipo && !ehLembrete(it)){
     destinos = zona('converter', it.tipo === 'tarefa' ? 'projeto' : 'tarefa', it.tipo === 'tarefa' ? 'Virar projeto' : 'Virar tarefa', '', 'conv') +
@@ -5731,6 +5747,7 @@ function onPointerUp(){
   clearTimeout(ptr.timer); pararAutoRolar();
   const p = ptr; ptr = null;
   soltarPressao(p);
+  document.body.classList.remove('drag-ativo');
   if(!p.ativo) return;
   suprimirClique = true; setTimeout(() => { suprimirClique = false; }, 80);
   if(ghost){ ghost.remove(); ghost = null; }
@@ -5788,10 +5805,10 @@ function onPointerUp(){
   const mudouPosicao = ids.join(',') !== p.antes;
   const lote = state.ui.modoSel && state.ui.sel.has(p.id) && state.ui.sel.size > 1;
   // mesma coluna (ou lista): só a posição mudou → ordem personalizada; outra coluna: muda status/data/categoria/projeto
-  const mesmoLugar = p.colOrigem ? c === p.colOrigem : !c;
+  const mesmoLugar = p.colOrigem ? c === p.colOrigem : p.grupoOrigem ? c === p.grupoOrigem : !c;
   const sec = secaoDaRota(), pr = state.prefs[sec];
   const salvaOrdem = mudouPosicao && pr && Array.isArray(pr.manual) && (mesmoLugar || pr.ordem === 'manual') && !lote &&
-    (!c || c.classList.contains('kcol'));
+    (!c || c.classList.contains('kcol') || c === p.grupoOrigem);
   if(c && !mesmoLugar){ if(lote) aplicarDropLote(c.dataset.dropKind, c.dataset.dropCol); else aplicarDrop(c.dataset.dropKind, c.dataset.dropCol, p.id); }
   if(salvaOrdem) salvarOrdemManual(sec, ids);
   else if(mudouPosicao) render();   // devolve o card ao lugar (destino recusado ou pergunta aberta)
