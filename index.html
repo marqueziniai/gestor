@@ -3648,7 +3648,8 @@ function focoHTML(sec, itens, o){
   o = o || {};
   const faixa = it => (o.faixaFn ? o.faixaFn(it) : faixaItem(it)) || 'semdata';
   const abertos = itens.filter(i => !concluido(i)), feitos = itens.filter(concluido);
-  const blocos = FAIXAS.concat([['semdata','Sem data']]).map(f => ({chave:f[0], nome:f[1], itens:abertos.filter(i => faixa(i) === f[0])})).filter(g => g.itens.length);
+  // cada faixa é um destino de soltar (muda a data); as vazias ficam como cabeçalho discreto, só se houver o que arrastar
+  const blocos = FAIXAS.concat([['semdata','Sem data']]).map(f => ({chave:f[0], nome:f[1], itens:abertos.filter(i => faixa(i) === f[0])})).filter(g => g.itens.length || abertos.length);
   const lista = its => '<div class="foco-lista" role="list" data-foco-sec="' + sec + '">' + its.map(it => linhaFoco(it, {semProjeto:o.semProjeto, arrastavel:true})).join('') + '</div>';
   const addId = o.addId || 'focoAdd';
   const add = o.semAdicionar ? '' : '<div class="foco-add"><span class="mais" aria-hidden="true">' + ic('plus', 18) + '</span><label class="sr-only" for="' + addId + '">' + esc(o.placeholder || 'Adicionar tarefa') + '</label>' +
@@ -3657,7 +3658,7 @@ function focoHTML(sec, itens, o){
   const ordemInfo = abertos.length > 1 ? '<p class="foco-ordem">' + ic(manual ? 'grip' : 'info', 13) +
     (manual ? '<span>Ordem personalizada.</span><button type="button" class="btn sm ghost" data-act="sheet-ordem" data-sec="' + sec + '">Alterar ordem</button>'
             : '<span>' + (ehToque() ? 'Segure e arraste' : 'Arraste') + (sec === 'projetos' || sec === 'categoria' ? ' um projeto' : ' uma tarefa') + ' para definir a sua ordem.</span>') + '</p>' : '';
-  const corpo = blocos.map(g => grupo(sec, 'foco-' + g.chave, g.nome, lista(g.itens), g.itens.length)).join('') +
+  const corpo = blocos.map(g => grupo(sec, 'foco-' + g.chave, g.nome, lista(g.itens), g.itens.length, {dropKind:'faixa', dropCol:g.chave, oculto:!g.itens.length})).join('') +
     (feitos.length ? grupo(sec, 'foco-feitas', 'Concluídas', '<div class="foco-lista" role="list">' + feitos.map(it => linhaFoco(it, {semProjeto:o.semProjeto})).join('') + '</div>', feitos.length) : '');
   return '<div class="foco">' + add + (corpo ? ordemInfo + corpo : state.ui.avisoVazio ? '' : vazio('sparkle', 'Tudo em dia 🎉', o.vazio || 'Nenhuma tarefa aberta por aqui.')) + '</div>';
 }
@@ -3817,7 +3818,7 @@ function grupo(sec, chave, titulo, corpo, n, o){
   o = o || {};
   const col = ((state.prefs[sec] && state.prefs[sec].colapsados) || []).indexOf(chave) !== -1;
   return '<section class="grupo' + (col ? ' col' : '') + (o.oculto ? ' g-vazio' : '') + '"' +
-    (o.dropKind ? ' data-drop="1" data-drop-kind="' + esc(o.dropKind) + '" data-drop-col="' + esc(chave) + '"' : '') + '>' +
+    (o.dropKind ? ' data-drop="1" data-drop-kind="' + esc(o.dropKind) + '" data-drop-col="' + esc(o.dropCol != null ? o.dropCol : chave) + '"' : '') + '>' +
     '<button type="button" class="grupo-h" data-act="toggle-grupo" data-sec="' + sec + '" data-grp="' + esc(chave) + '" aria-expanded="' + (!col) + '">' +
     ic('chevD', 15, 'chev') + '<span>' + esc(titulo) + '</span><span class="cnt">' + n + '</span></button>' +
     '<div class="grupo-body">' + corpo + '</div></section>';
@@ -5624,7 +5625,11 @@ function onPointerMove(e){
   }
   if(ghost){ ghost.style.left = (e.clientX - ptr.offX) + 'px'; ghost.style.top = (e.clientY - ptr.offY) + 'px'; }
   if(ptr.modo === 'sort'){ reposicionarSort(e.clientX, e.clientY); autoRolar(e.clientX, ptr.lista.classList.contains('kanban') ? ptr.lista : null); return; }
-  if(ptr.modo === 'foco'){ reposicionarEm(ptr.lista, ptr.el, e.clientX, e.clientY, 'y', 'data-foco-id'); autoRolarV(e.clientY); return; }
+  if(ptr.modo === 'foco'){
+    const alvoF = document.elementFromPoint(e.clientX, e.clientY), colF = alvoF ? alvoF.closest('[data-drop]') : null;
+    if(colF !== colAtual){ if(colAtual) colAtual.classList.remove('over'); colAtual = colF; if(colAtual) colAtual.classList.add('over'); }
+    reposicionarEm(ptr.lista, ptr.el, e.clientX, e.clientY, 'y', 'data-foco-id'); autoRolarV(e.clientY); return;
+  }
   const alvo = document.elementFromPoint(e.clientX, e.clientY);
   const col = alvo ? alvo.closest('[data-drop]') : null;
   if(col !== colAtual){ if(colAtual) colAtual.classList.remove('over'); colAtual = col; if(colAtual) colAtual.classList.add('over'); }
@@ -5701,8 +5706,11 @@ function ativarFoco(){
   ptr.ativo = true;
   soltarPressao(ptr);
   ptr.antes = $$('[data-foco-id]', $('#view')).map(x => x.dataset.focoId).join(',');
+  ptr.grupoOrigem = ptr.el.closest('.grupo[data-drop]');   // faixa de onde a linha saiu
+  document.body.classList.add('drag-ativo');
   criarFantasma(ptr.el);
   ptr.el.classList.add('sorting');
+  if(ehCelular()) montarDropbar(null, null, getItem(ptr.id));
   esconderTip();
   if(ptr.toque) vibrar(12);
 }
@@ -5767,6 +5775,15 @@ function onPointerUp(){
   }
   if(p.modo === 'foco'){
     p.el.classList.remove('sorting');
+    const cF = colAtual;
+    if(cF){ cF.classList.remove('over'); colAtual = null; }
+    if(dropbar){ dropbar.remove(); dropbar = null; }
+    if(cF && cF !== p.grupoOrigem){
+      const loteF = state.ui.modoSel && state.ui.sel.has(p.id) && state.ui.sel.size > 1;
+      if(loteF) aplicarDropLote(cF.dataset.dropKind, cF.dataset.dropCol); else aplicarDrop(cF.dataset.dropKind, cF.dataset.dropCol, p.id);
+      render();   // a linha volta ao lugar se o destino foi recusado
+      return;
+    }
     const ids = $$('[data-foco-id]', $('#view')).map(x => x.dataset.focoId);
     if(ids.join(',') === p.antes) return;
     const sec = p.lista.dataset.focoSec, pr = state.prefs[sec]; if(!pr) return;
