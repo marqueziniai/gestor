@@ -1452,6 +1452,15 @@ function normalizarDados(){
   const d = state.dados;
   d.lixeira = Array.isArray(d.lixeira) ? d.lixeira : [];
   d.modelos = Array.isArray(d.modelos) ? d.modelos : [];
+  // arquivos de versões antigas podem não ter estes campos: o app lê todos como lista/objeto
+  const garante = function(it){
+    if(!it || typeof it !== 'object') return;
+    if(!Array.isArray(it.atividade)) it.atividade = [];
+    if(!it.extras || typeof it.extras !== 'object' || Array.isArray(it.extras)) it.extras = {};
+    if(!it.recorrencia || typeof it.recorrencia !== 'object' || Array.isArray(it.recorrencia)) it.recorrencia = {};
+  };
+  d.items.forEach(garante);
+  d.lixeira.forEach(e => (e && Array.isArray(e.itens) ? e.itens : []).forEach(garante));
   normalizarEstrutura();
   items().forEach(function(it){
     if(concluido(it)){ if(!it.concluidoEm) it.concluidoEm = dataConclusaoInferida(it); }
@@ -5060,6 +5069,7 @@ function viewConfig(){
     '<h2 class="sect-t">Dados</h2><section class="card"><div style="display:flex;gap:8px;flex-wrap:wrap">' +
       '<button type="button" class="btn" data-act="exportar">' + ic('download',15) + 'Exportar JSON</button>' +
       '<button type="button" class="btn" data-act="importar">' + ic('upload',15) + 'Importar JSON</button>' +
+      '<button type="button" class="btn" data-act="verificar-backup">' + ic('check',15) + 'Verificar backup</button>' +
       '<input type="file" id="fileImport" accept="application/json,.json" hidden></div><div class="divider"></div>' +
       '<div style="display:flex;gap:8px;flex-wrap:wrap"><button type="button" class="btn" data-act="restaurar-exemplo">' + ic('refresh',15) + 'Restaurar dados de exemplo</button>' +
       '<button type="button" class="btn dngr" data-act="apagar-tudo">' + ic('trash',15) + 'Apagar todos os dados</button></div>' +
@@ -6422,12 +6432,20 @@ const ACOES = {
     });
   },
   'exportar': () => {
-    const blob = new Blob([JSON.stringify({schemaVersion:SCHEMA_VERSION, exportadoEm:agoraISO(), dados:state.dados, prefs:state.prefs}, null, 2)], {type:'application/json'});
+    const v = verificarBackup();   // confere, antes de baixar, que o arquivo volta inteiro na importação
+    const blob = new Blob([JSON.stringify(montarExportacao(), null, 2)], {type:'application/json'});
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob); a.download = 'gestor-tarefas-' + hojeISO() + '.json';
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-    toast('Arquivo JSON exportado');
+    toast(v.ok ? 'Backup exportado (' + v.resumo.itens + ' itens, ' + v.resumo.comentarios + ' comentários)' : 'Backup exportado, mas a verificação achou problemas: veja em Configurações → Verificar backup');
+  },
+  'verificar-backup': () => {
+    const v = verificarBackup(), r = v.resumo;
+    abrirConfirm({titulo: v.ok ? 'Backup verificado' : 'Problemas no backup',
+      texto: (v.ok ? 'Tudo certo: o arquivo exportado volta inteiro na importação. ' : 'Atenção: ' + v.problemas.join(' · ') + '. ') +
+        'Conteúdo: ' + r.itens + ' itens, ' + r.comentarios + ' comentários, ' + r.checklist + ' itens de checklist, ' + r.categorias + ' categorias, ' + r.modelos + ' modelos de estrutura, ' + r.campos + ' campos, ' + r.lixeira + ' na lixeira.',
+      opcoes:[{label:'Ok', valor:'ok', variante:'prim'}]});
   },
   'importar': () => { const f = $('#fileImport'); if(f) f.click(); },
   'restaurar-exemplo': () => {
@@ -6634,21 +6652,82 @@ function importacaoSegura(dados, prefs){
   }
   return ok(dados, '', false) && ok(prefs || null, '', true);
 }
+/* --- Backup (Configurações → Exportar/Importar JSON) ---
+   Regra de manutenção: toda mudança na forma dos dados (item, estrutura, categorias, modelos, lixeira) ou das
+   preferências precisa (1) ir para o arquivo (montarExportacao já leva state.dados e state.prefs inteiros),
+   (2) voltar na importação (migrarDados/normalizarDados/lerPrefs) e (3) subir SCHEMA_VERSION se mudar o formato.
+   "Verificar backup" (Configurações) e a exportação conferem isso sozinhas. */
+/** Contagens para conferir o que entrou e o que saiu. */
+function resumoBackup(d){
+  const lix = (d.lixeira || []).reduce((a, e) => a.concat(e && e.itens || []), []);
+  const soma = (arr, f) => arr.reduce((n, i) => n + f(i), 0);
+  const com = i => (i.atividade || []).filter(a => a.kind === 'comentario').length;
+  return {itens:d.items.length, categorias:d.categorias.length, comentarios:soma(d.items, com), checklist:soma(d.items, i => (i.checklist || []).length),
+    modelos:(d.modelos || []).length, campos:((d.estrutura || {}).campos || []).length, lixeira:lix.length};
+}
+const RESUMO_CONFERE = ['itens', 'categorias', 'comentarios', 'checklist', 'modelos'];
+function montarExportacao(){
+  return {app:'gestor-tarefas', schemaVersion:SCHEMA_VERSION, exportadoEm:agoraISO(), resumo:resumoBackup(state.dados), dados:state.dados, prefs:state.prefs};
+}
+/** Caminhos que existem em a e não voltam iguais em b (chaves perdidas, valores ou tamanhos de lista diferentes). */
+function diferencas(a, b, base){
+  const out = [];
+  if(Array.isArray(a)){ if(!Array.isArray(b) || a.length !== b.length) out.push(base || '(raiz)'); return out; }
+  if(a && typeof a === 'object'){
+    if(!b || typeof b !== 'object'){ out.push(base || '(raiz)'); return out; }
+    Object.keys(a).forEach(k => { if(!(k in b)) out.push((base ? base + '.' : '') + k); else out.push.apply(out, diferencas(a[k], b[k], (base ? base + '.' : '') + k)); });
+    return out;
+  }
+  if(a !== b) out.push(base || '(raiz)');
+  return out;
+}
+/** Confere, sem mexer nos dados, se o que seria exportado volta inteiro na importação. */
+function verificarBackup(){
+  const problemas = [];
+  let j;
+  try{ j = JSON.parse(JSON.stringify(montarExportacao())); }
+  catch(e){ return {ok:false, problemas:['não foi possível montar o arquivo (' + e.message + ')'], resumo:resumoBackup(state.dados)}; }
+  const res = resumoBackup(j.dados);
+  if(!importacaoSegura(j.dados, j.prefs)) problemas.push('o app recusaria o próprio arquivo na importação (algum identificador tem aspas ou sinais de HTML)');
+  const perdidas = diferencas(j.prefs, lerPrefs(clone(j.prefs)));
+  if(perdidas.length) problemas.push('preferências que não voltam iguais: ' + perdidas.slice(0, 6).join(', '));
+  const ids = {}; let repetidos = 0;
+  j.dados.items.forEach(i => { if(ids[i.id]) repetidos++; ids[i.id] = true; });
+  (j.dados.lixeira || []).forEach(e => (e.itens || []).forEach(i => { ids[i.id] = true; }));
+  if(repetidos) problemas.push(repetidos + ' itens com id repetido');
+  const soltos = j.dados.items.filter(i => (i.projetoId && !ids[i.projetoId]) || (i.origemId && !ids[i.origemId])).length;
+  if(soltos) problemas.push(soltos + ' itens ligados a um projeto/origem que não existe mais');
+  if(j.dados.items.some(i => !Array.isArray(i.atividade))) problemas.push('há itens sem histórico (serão corrigidos ao importar)');
+  return {ok:!problemas.length, problemas, resumo:res};
+}
+/** Aplica um arquivo exportado (objeto já lido). Lança 'formato', 'versao' ou 'inseguro'. */
+function importarJSON(j){
+  const d = j && (j.dados || j);
+  if(!d || !Array.isArray(d.items) || !Array.isArray(d.categorias)) throw new Error('formato');
+  const ver = Number(j.schemaVersion || 1);
+  if(ver > SCHEMA_VERSION) throw new Error('versao');   // arquivo de um app mais novo: não arrisca perder campos
+  if(!importacaoSegura(d, j.prefs)) throw new Error('inseguro');
+  const snap = snapshot(), snapP = clone(state.prefs);
+  state.dados = migrarDados(d, ver);
+  normalizarDados();
+  if(j.prefs && [2,3,4].indexOf(j.prefs.versao) !== -1){ state.prefs = lerPrefs(j.prefs); persistirPrefs(); aplicarTema(); }
+  persistir(); render();
+  const atual = resumoBackup(state.dados);
+  const dif = j.resumo ? RESUMO_CONFERE.filter(k => j.resumo[k] !== atual[k]) : [];
+  return {snap, snapP, atual, dif};
+}
 function importarArquivo(file){
   const fr = new FileReader();
   fr.onload = function(){
     try{
-      const j = JSON.parse(String(fr.result));
-      const d = j.dados || j;
-      if(!d || !Array.isArray(d.items) || !Array.isArray(d.categorias)) throw new Error('formato');
-      if(!importacaoSegura(d, j.prefs)) throw new Error('inseguro');
-      const snap = snapshot();
-      state.dados = migrarDados(d, Number(j.schemaVersion || 1));
-      normalizarDados();
-      if(j.prefs && [2,3,4].indexOf(j.prefs.versao) !== -1){ state.prefs = lerPrefs(j.prefs); persistirPrefs(); aplicarTema(); }
-      persistir(); render();
-      toast('Dados importados (' + state.dados.items.length + ' itens)', () => restaurar(snap));
-    }catch(err){ toast(err.message === 'inseguro' ? 'Arquivo recusado: tem conteúdo que poderia rodar código no app' : 'Arquivo inválido: não é um JSON exportado por este app'); }
+      const r = importarJSON(JSON.parse(String(fr.result)));
+      toast('Dados importados (' + r.atual.itens + ' itens, ' + r.atual.comentarios + ' comentários)' + (r.dif.length ? ' — atenção: não bate com o arquivo em ' + r.dif.join(', ') : ''),
+        () => { restaurar(r.snap); state.prefs = r.snapP; persistirPrefs(); aplicarTema(); render(); });
+    }catch(err){
+      toast(err.message === 'inseguro' ? 'Arquivo recusado: tem conteúdo que poderia rodar código no app'
+        : err.message === 'versao' ? 'Este arquivo foi exportado por uma versão mais nova do app: atualize o app (toque no logo G) e tente de novo'
+        : 'Arquivo inválido: não é um JSON exportado por este app');
+    }
     const f = $('#fileImport'); if(f) f.value = '';
   };
   fr.readAsText(file);
