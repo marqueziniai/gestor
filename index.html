@@ -1460,6 +1460,7 @@ function normalizarDados(){
     if(!it.recorrencia || typeof it.recorrencia !== 'object' || Array.isArray(it.recorrencia)) it.recorrencia = {};
   };
   d.items.forEach(garante);
+  d.items.forEach(tirarConcluidoDoFuturo);
   d.lixeira.forEach(e => (e && Array.isArray(e.itens) ? e.itens : []).forEach(garante));
   normalizarEstrutura();
   items().forEach(function(it){
@@ -1892,7 +1893,7 @@ function alterar(id, mud, opts){
   if(!mudou){ if(!opts.semRender) render(); return it; }
   it.atualizadoEm = agoraISO();
   if('categoriaId' in mud && it.tipo === 'projeto') alinharCategoriaDoProjeto(it);
-  if('status' in mud && it.tipo) it.concluidoEm = concluido(it) ? (it.concluidoEm || agoraISO()) : null;
+  if('status' in mud && it.tipo){ it.concluidoEm = concluido(it) ? (it.concluidoEm || agoraISO()) : null; tirarConcluidoDoFuturo(it); }
   // o título do lembrete acompanha o da origem, se não foi personalizado
   if('titulo' in mud){ const f = lembreteDe(it.id); if(f && f.titulo === tituloAntigo) f.titulo = it.titulo; }
   if(!ehLembrete(it)) sincronizarLembrete(it);
@@ -1909,10 +1910,18 @@ function alinharCategoriaDoProjeto(p){
     t.categoriaId = nova;
   });
 }
+/** O Futuro só guarda o que ainda está aberto: concluído vai para Projetos ou Tarefas (sem tipo, já foi padronizado como tarefa). */
+function tirarConcluidoDoFuturo(it){
+  if(!it || it.secao !== 'futuro' || !concluido(it)) return false;
+  it.secao = it.tipo === 'projeto' ? 'projetos' : 'tarefas';
+  if(it.atividade) it.atividade.push(novoLog({icone:'check', texto:'Concluído: saiu do Futuro e foi para ' + LOCAIS[it.secao]}));
+  return true;
+}
 /** Status com a data de conclusão coerente (para quem altera o status sem passar por alterar). */
 function marcarStatus(it, sid){
   it.status = sid;
   it.concluidoEm = concluido(it) ? (it.concluidoEm || agoraISO()) : null;
+  tirarConcluidoDoFuturo(it);
 }
 function alterarExtra(id, cid, valor){
   const it = getItem(id); if(!it) return;
@@ -2203,10 +2212,20 @@ function setStatus(id, sid){
   if(eraConcluido) toast('“' + it.titulo + '” reaberto', () => restaurar(snap));
 }
 function concluir(id, anchor){
-  const it = getItem(id); if(!it || !it.tipo) return;
+  let it = getItem(id); if(!it) return;
+  const doFuturo = it.secao === 'futuro' && !concluido(it);
+  if(!it.tipo){
+    // item ainda não classificado, concluído no Futuro: padroniza como tarefa e conclui
+    if(it.secao !== 'futuro') return;
+    alterar(id, {tipo:'tarefa', status:statusInicial('tarefa').id}, {semRender:true});
+    it = getItem(id);
+  }
+  if(!it.tipo) return;
   if(ehLembrete(it)) return concluido(it) ? reabrirLembrete(id) : concluirLembrete(id, anchor);
   if(concluido(it)) return setStatus(id, statusInicial(it.tipo).id);
   setStatus(id, statusFinal(it.tipo).id);
+  const depois = getItem(id);
+  if(doFuturo && depois && concluido(depois) && depois.secao !== 'futuro') toast('“' + depois.titulo + '” concluído e movido para ' + LOCAIS[depois.secao]);
 }
 function aplicaRecorrenciaEntrega(it){
   const rec = it.recorrencia && it.recorrencia.dataEntrega;
@@ -3565,7 +3584,7 @@ function abrirReagendar(anchor, f, sel){
 const ehDesktop = () => window.matchMedia('(min-width:1024px)').matches;
 /** Botão compacto de conclusão (círculo). No lembrete, conclui o lembrete (com a cor dele). */
 function btnConcluir(it){
-  if(!it.tipo) return '';
+  if(!it.tipo && it.secao !== 'futuro') return '';   // na triagem ainda não dá para concluir; no Futuro sim (vira tarefa)
   const t = esc(it.titulo), feito = concluido(it), lemb = ehLembrete(it);
   const acao = feito ? (lemb ? 'Reabrir lembrete' : 'Reabrir') : (lemb ? 'Concluir lembrete' : 'Concluir');
   return '<button type="button" class="chk' + (feito ? ' feito' : lemb ? ' lemb' : '') + '" data-act="concluir" data-id="' + it.id + '" aria-label="' + acao + ': ' + t + '" data-tip="' + acao + '" data-tip-sempre="1">' + ic('check', 13) + '</button>';
